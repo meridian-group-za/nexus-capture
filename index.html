@@ -1,0 +1,1137 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Capture Compliance</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
+<script src="./auth.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  :root {
+    --color-bg:#000C21; --color-surface:#061530; --color-text:#f3f7fc;
+    --color-accent:#ec6d25; --color-accent-2:#f2955c;
+    --color-accent-100:#fde7d8; --color-accent-200:#f8c3a1; --color-accent-300:#f2955c;
+    --color-accent-400:#ee7f3c; --color-accent-500:#ec6d25; --color-accent-600:#cf5a18;
+    --color-accent-700:#a94711; --color-accent-800:#2a4568; --color-accent-900:#132b47;
+    --color-neutral-100:#f3f7fc; --color-neutral-200:#e2ebf5; --color-neutral-300:#c9d7e6;
+    --color-neutral-400:#9dc4ec; --color-neutral-500:#5f80a6; --color-neutral-600:#4f6c8e;
+    --color-neutral-700:#3d5f85; --color-neutral-800:#1c3f6b; --color-neutral-900:#122d4f;
+    --font-heading:'Poppins', system-ui, sans-serif; --font-body:'Poppins', system-ui, sans-serif;
+    --radius-md:10px; --radius-lg:16px;
+    --nx-good:#22c55e; --nx-warn:#e8a838; --nx-crit:#e4574c;
+  }
+  html { color-scheme: dark; }
+  body { font-family:var(--font-body); font-size:13px; background:var(--color-bg); color:var(--color-text); -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums; }
+  ::-webkit-scrollbar { width:9px; height:9px; }
+  ::-webkit-scrollbar-thumb { background:rgba(157,196,236,.25); border-radius:6px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+
+  .shell { display:flex; min-height:100vh; background:var(--color-bg); }
+
+  .sidebar { width:208px; flex:none; position:sticky; top:0; align-self:flex-start; height:100vh; overflow-y:auto;
+    display:flex; flex-direction:column; border-right:1px solid var(--color-neutral-800); background:#0a1c3a; }
+  .brand { display:flex; align-items:center; gap:9px; padding:18px 16px 12px; }
+  .brand-mark { width:34px; height:34px; flex:0 0 34px; display:grid; place-items:center; }
+  .brand-mark img { width:100%; height:100%; object-fit:contain; display:block; }
+  .brand-name { font-family:var(--font-heading); font-size:16px; font-weight:700; letter-spacing:-.015em; line-height:1.2; }
+  .brand-name span { color:var(--color-accent); }
+  .brand-sub { padding:0 16px 10px; font-size:11px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:#fff; text-align:center; }
+  nav { display:flex; flex-direction:column; gap:1px; padding:6px 10px; flex:1; }
+  .nav-item { display:flex; align-items:center; gap:12px; padding:7px 11px; border-radius:var(--radius-md); cursor:pointer;
+    font-size:12.5px; font-weight:500; border-left:2px solid transparent; background:transparent; color:var(--color-neutral-300);
+    border:none; border-left:2px solid transparent; width:100%; text-align:left; font-family:inherit; }
+  .nav-item { gap:10px; }
+  .nav-ico { width:16px; height:16px; flex:0 0 16px; opacity:.62; }
+  .nav-item:hover { background:color-mix(in srgb, var(--color-accent) 9%, transparent); }
+  .nav-item:hover .nav-ico { opacity:.9; }
+  .nav-item.active .nav-ico { opacity:1; color:var(--color-accent); }
+  .nav-item.active { border-left:2px solid var(--color-accent); background:color-mix(in srgb, var(--color-accent) 12%, transparent); color:var(--color-neutral-100); }
+  .sidebar-foot { padding:10px 16px 14px; border-top:1px solid var(--color-neutral-800); font-size:10.5px; color:var(--color-neutral-500); line-height:1.5; text-align:center; }
+  .sidebar-foot b { color:var(--color-neutral-300); font-weight:500; }
+  .sidebar-foot .who { color:var(--color-neutral-200); font-size:11px; font-weight:600; margin-bottom:5px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .signout { background:transparent; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400);
+    border-radius:999px; padding:3px 11px; font-size:10px; font-family:inherit; cursor:pointer; margin-bottom:10px; }
+  .signout:hover { border-color:var(--color-accent-700); color:var(--color-accent-300); }
+
+  .main { flex:1; min-width:0; padding:18px clamp(16px,2vw,26px) 32px; }
+  .main-inner { max-width:1700px; }
+  .page-head { display:flex; align-items:flex-end; gap:24px; flex-wrap:wrap; margin-bottom:10px; }
+  .page-head h1 { margin:0 0 2px; font-size:21px; font-family:var(--font-heading); font-weight:700; color:var(--color-neutral-100); }
+  .eyebrow { color:var(--color-accent); font-size:9.5px; font-weight:700; letter-spacing:.18em; margin-bottom:4px; text-transform:uppercase; }
+  .head-stat { margin-left:auto; text-align:right; }
+  .head-stat-label { font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--color-neutral-500); }
+  .head-stat-value { font-family:var(--font-heading); font-size:22px; line-height:1.1; color:var(--color-neutral-100); }
+  .divider { height:1px; background:linear-gradient(90deg,transparent,var(--color-neutral-800) 48px,var(--color-neutral-800) calc(100% - 48px),transparent); margin-bottom:14px; }
+
+  .filters { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+  .filters select { background:#0a1c3a; border:1px solid var(--color-neutral-800); color:var(--color-text); border-radius:var(--radius-md);
+    padding:6px 8px; font-size:11.5px; font-family:inherit; flex:none; }
+  .filters select option { background:#0f2c4f; color:#e9e9ed; }
+  .reset-btn { background:transparent; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400); border-radius:var(--radius-md);
+    padding:6px 12px; font-size:11px; font-family:inherit; cursor:pointer; flex:none; white-space:nowrap; }
+  .reset-btn:hover { border-color:var(--color-accent-700); color:var(--color-accent-300); }
+
+  .content { display:flex; flex-direction:column; gap:12px; }
+  /* Two panels sharing a row. auto-fit rather than a fixed breakpoint: it goes
+     two-up whenever ~320px per column is available, so display scaling and
+     window size sort themselves out without a magic media-query number. */
+  .panel-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px; align-items:start; }
+  /* Bar rows inside a half-width panel need a narrower label gutter. */
+  .panel-row .ranked-row { gap:8px; }
+  .panel-row .ranked-row .name { width:104px; }
+  .panel-row .ranked-row .value { width:46px; }
+  .kpi-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:12px; }
+  .kpi-card { border-radius:var(--radius-md); background:var(--color-surface); border:1px solid var(--color-neutral-800);
+    display:flex; flex-direction:column; overflow:hidden; }
+  .kpi-accent { height:3px; }
+  .kpi-body { padding:9px 12px 11px; display:flex; flex-direction:column; gap:3px; }
+  .kpi-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.1em; color:var(--color-neutral-400); }
+  .kpi-value { font-size:21px; font-weight:700; line-height:1; color:var(--color-neutral-100); }
+  .kpi-sub { font-size:10px; line-height:1.35; color:var(--color-neutral-500); }
+
+  .panel { border-radius:var(--radius-lg); background:var(--color-surface); border:1px solid var(--color-neutral-800); }
+  .panel-head { padding:11px 15px 2px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .panel-title { font-size:12px; font-weight:600; color:var(--color-neutral-100); text-transform:uppercase; letter-spacing:.07em; }
+  .panel-sub { font-size:11px; margin-top:3px; color:var(--color-neutral-500); }
+  .panel-body { padding:8px 15px 13px; }
+  .search-input { height:32px; padding:0 12px; font-size:12px; border-radius:var(--radius-md); background:#0a1c3a; border:1px solid var(--color-neutral-800); color:var(--color-text); font-family:inherit; outline:none; width:220px; }
+  .search-input:focus { border-color:var(--color-accent-700); }
+  .form-filter { display:flex; align-items:center; gap:6px; }
+  .form-filter .search-input { width:300px; height:28px; font-size:11.5px; }
+  .filter-pill { border-radius:999px; padding:4px 11px; font-size:11px; font-family:inherit; cursor:pointer;
+    background:transparent; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400); white-space:nowrap; }
+  .filter-pill b { font-weight:700; }
+  .filter-pill.good:hover { border-color:var(--nx-good); color:var(--nx-good); }
+  .filter-pill.crit:hover { border-color:var(--nx-crit); color:var(--nx-crit); }
+  .filter-pill.active.good { background:rgba(34,197,94,.16); border-color:var(--nx-good); color:var(--nx-good); }
+  .filter-pill.active.crit { background:rgba(228,87,76,.16); border-color:var(--nx-crit); color:var(--nx-crit); }
+  .chip-clear { background:color-mix(in srgb, var(--color-accent) 14%, transparent); border:1px solid var(--color-accent-700);
+    color:var(--color-accent-300); border-radius:999px; padding:3px 9px; font-size:10px; font-family:inherit; cursor:pointer; white-space:nowrap; }
+
+  .focus-list { display:flex; flex-wrap:wrap; gap:10px; }
+  .focus-item { display:flex; align-items:center; gap:9px; border-radius:var(--radius-md); padding:7px 11px; font-size:11.5px; flex:1; min-width:240px; background:color-mix(in srgb, var(--nx-crit) 10%, transparent); border:1px solid color-mix(in srgb, var(--nx-crit) 32%, transparent); }
+  .focus-item .dot { width:8px; height:8px; border-radius:50%; background:var(--nx-crit); flex-shrink:0; }
+  .focus-item b { color:var(--color-neutral-100); font-weight:700; }
+  .focus-item .pct { margin-left:auto; font-weight:700; color:var(--nx-crit); flex-shrink:0; }
+  .empty-state { padding:14px; text-align:center; font-size:12px; color:var(--color-neutral-500); }
+
+  .ranked-row { display:flex; align-items:center; gap:10px; padding:3px 0; }
+  .ranked-row .rank { width:18px; font-size:10px; font-weight:700; text-align:center; color:var(--color-neutral-500); flex-shrink:0; }
+  .ranked-row .name { width:150px; flex-shrink:0; font-size:12px; color:var(--color-neutral-100); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ranked-row .track { flex:1; min-width:40px; background:var(--color-accent-900); border-radius:4px; height:10px; overflow:hidden; }
+  .ranked-row .fill { height:100%; border-radius:4px; }
+  .ranked-row .value { width:52px; text-align:right; font-size:12px; font-weight:700; flex-shrink:0; }
+  /* Clickable bar labels. Underline on hover so it reads as a control without
+     adding chrome to every row. */
+  .name-btn { background:none; border:none; padding:0; margin:0; font:inherit; font-size:12px; text-align:left;
+    color:var(--color-neutral-100); cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .name-btn:hover { color:var(--color-accent-300); text-decoration:underline; }
+  .name-btn.active { color:var(--color-accent); font-weight:700; }
+  .name-btn.active::after { content:' \00d7'; font-weight:700; }
+  .drill { border-color:var(--color-accent-700); box-shadow:0 0 0 1px color-mix(in srgb, var(--color-accent) 22%, transparent); }
+  .row-active { background:color-mix(in srgb, var(--color-accent) 8%, transparent); border-radius:6px; }
+  @media (max-width:820px) { .bar-meta { display:none; } }
+
+  table { width:100%; border-collapse:collapse; font-size:11px; }
+  thead tr { background:var(--color-accent-900); }
+  th { text-align:left; padding:6px 8px; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--color-neutral-400); white-space:nowrap; }
+  th.num, td.num { text-align:right; }
+  td { padding:4px 8px; border-top:1px solid var(--color-neutral-800); color:var(--color-text); white-space:nowrap; }
+  tbody tr:hover { background:color-mix(in srgb, var(--color-accent) 7%, transparent); }
+  .q-cell { max-width:520px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--color-neutral-100); }
+  .name-cell { color:var(--color-neutral-100); font-weight:500; max-width:420px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pill { display:inline-flex; align-items:center; gap:4px; padding:1px 7px; border-radius:999px; font-size:10px; font-weight:700; white-space:nowrap; }
+  .pill.good { background:rgba(34,197,94,.14); color:var(--nx-good); border:1px solid rgba(34,197,94,.35); }
+  .pill.warn { background:rgba(232,168,56,.14); color:var(--nx-warn); border:1px solid rgba(232,168,56,.35); }
+  .pill.crit { background:rgba(228,87,76,.14); color:var(--nx-crit); border:1px solid rgba(228,87,76,.35); }
+  .pill.na { background:color-mix(in srgb, var(--color-neutral-400) 10%, transparent); color:var(--color-neutral-500); border:1px solid var(--color-neutral-800); }
+  .mini-track { display:inline-flex; width:48px; height:6px; border-radius:3px; background:var(--color-accent-900); overflow:hidden; vertical-align:middle; margin-right:8px; }
+  .mini-fill { height:100%; border-radius:3px; display:block; }
+  .table-wrap { overflow-x:auto; }
+  .table-note { font-size:10.5px; color:var(--color-neutral-500); padding:6px 15px 11px; }
+  .type-tag { display:inline-flex; align-items:center; padding:1px 6px; border-radius:5px; font-size:9px; font-weight:600; white-space:nowrap; }
+  .type-tag.audit { background:color-mix(in srgb, var(--color-neutral-400) 10%, transparent); color:var(--color-neutral-400); }
+  .type-tag.sos { background:color-mix(in srgb, var(--color-accent) 12%, transparent); color:var(--color-accent-300); }
+  .type-tag.price { background:color-mix(in srgb, var(--color-neutral-400) 6%, transparent); color:var(--color-neutral-500); }
+
+  #page-loading { padding:60px; text-align:center; color:var(--color-neutral-500); font-size:13px; }
+</style>
+</head>
+<body>
+<div id="app"><div id="page-loading">Loading compliance data&hellip;</div></div>
+
+<script>
+// Inline stroke icons for the sidebar. currentColor so they inherit the
+// nav item's hover/active colour; 1.6 stroke reads cleanly at 16px.
+const ICONS = {
+  gauge:     '<path d="M3 13a9 9 0 1 1 18 0"/><path d="M12 13l4-3"/><circle cx="12" cy="13" r="1.4"/><path d="M3 13h2M19 13h2M12 4v2"/>',
+  clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M8.5 10h7M8.5 14h7M8.5 18h4"/>',
+  tag:       '<path d="M20.6 12.4 12.4 20.6a2 2 0 0 1-2.8 0l-6.2-6.2a2 2 0 0 1 0-2.8L11.6 3.4a2 2 0 0 1 1.4-.6h5.6a2 2 0 0 1 2 2V11a2 2 0 0 1-.6 1.4Z"/><circle cx="16.5" cy="7.5" r="1.4"/>',
+  help:      '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4"/><circle cx="12" cy="16.8" r=".9" fill="currentColor" stroke="none"/>',
+  camera:    '<path d="M4 8h3l1.2-2h7.6L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13.5" r="3.2"/>',
+};
+function navIcon(name) {
+  return '<svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" '
+       + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[name] || '') + '</svg>';
+}
+
+const NAV_ITEMS = [
+  { id: 'overview',    label: 'Compliance Overview', icon: 'gauge' },
+  { id: 'campaigns',   label: 'All Forms',            icon: 'clipboard' },
+  { id: 'pricing',     label: 'Price Surveys',        icon: 'tag' },
+  { id: 'questions',   label: 'Form Questions',       icon: 'help' },
+  { id: 'notcaptured', label: 'Store Level Detail',   icon: 'camera' },
+];
+
+let DATA = null;
+let ACCOUNT = null;
+let state = { page: 'overview', client: 'ALL', region: 'ALL', manager: 'ALL', banner: 'ALL', captured: 'ALL', qType: 'ALL', qSearch: '', search: '', formQ: '', scope: 'open' };
+
+function pct(v) { return v === null || v === undefined ? null : v * 100; }
+function fmtPct(v, digits) { return v === null || v === undefined ? '—' : v.toFixed(digits === undefined ? 1 : digits) + '%'; }
+function tierColor(p) {
+  if (p === null || p === undefined) return '#4a6b8a';
+  if (p < 40) return 'var(--nx-crit)';
+  if (p < 70) return 'var(--nx-warn)';
+  return 'var(--nx-good)';
+}
+function tierClass(p) {
+  if (p === null || p === undefined) return 'na';
+  if (p < 40) return 'crit';
+  if (p < 70) return 'warn';
+  return 'good';
+}
+// --- Campaign timing -------------------------------------------------------
+// Survey windows vary per campaign (26 distinct windows in the August set), so
+// pacing is only meaningful per campaign, never as one global number.
+function today() { return new Date(new Date().toISOString().slice(0,10)); }
+
+function timing(c) {
+  if (!c.periodStart || !c.periodEnd) return { known:false, open:false, timeGone:null, daysLeft:null };
+  const start = new Date(c.periodStart), end = new Date(c.periodEnd), now = today();
+  const span = Math.max(1, Math.round((end - start) / 86400000));
+  const daysLeft = Math.round((end - now) / 86400000);
+  return {
+    known: true,
+    open: now <= end,
+    timeGone: Math.max(0, Math.min(1, Math.round((now - start) / 86400000) / span)),
+    daysLeft: daysLeft,
+  };
+}
+
+// How far coverage has fallen behind the clock. Positive = behind schedule.
+// This is what makes "20% captured" readable: alarming at 90% of the window
+// gone, entirely normal at 15%.
+function pacingGap(c) {
+  const t = timing(c);
+  if (!t.known || !t.open || c.coverage === null || c.coverage === undefined) return null;
+  return t.timeGone - c.coverage;
+}
+
+function isOpen(c) { return timing(c).open; }
+
+// --- Banner ----------------------------------------------------------------
+// Banner comes from the Call Cycle Master, joined in by
+// extract_compliance_data.py on the GeoRep store code (MER####). ~99% of store
+// rows match; the rest have no banner row in the master and group as "Unknown".
+function bannerOf(row) { return row.banner || 'Unknown'; }
+
+// Roll store rows up by an arbitrary key, returning coverage (capture rate) and
+// average store compliance side by side -- the two are different questions and
+// a group can be strong on one and weak on the other.
+function rollup(campaignList, keyFn) {
+  const acc = new Map();
+  for (const c of campaignList) {
+    for (const r of c.storeRows || []) {
+      const k = keyFn(r);
+      if (!k) continue;
+      let a = acc.get(k);
+      if (!a) { a = { key:k, target:0, captured:0, compSum:0, compN:0 }; acc.set(k, a); }
+      a.target++;
+      if (r.captured === 'Yes') a.captured++;
+      if (r.compliance !== null && r.compliance !== undefined) { a.compSum += r.compliance; a.compN++; }
+    }
+  }
+  return [...acc.values()].map(a => Object.assign(a, {
+    coverage: a.target ? a.captured / a.target : null,
+    compliance: a.compN ? a.compSum / a.compN : null,
+  }));
+}
+
+function fmtDaysLeft(n) {
+  if (n === null) return '';
+  if (n < 0) return 'closed';
+  if (n === 0) return 'closes today';
+  if (n === 1) return '1 day left';
+  return n + ' days left';
+}
+
+// A JS string literal safe inside a double-quoted HTML attribute. JSON.stringify
+// alone emits double quotes, which terminate the attribute and silently break
+// the handler -- so the quotes are entity-encoded for the parser to decode.
+function jsArg(v) {
+  return JSON.stringify(String(v))
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function esc(s) { return (s === null || s === undefined) ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function matchesFilters(row, campaignClient) {
+  if (state.client !== 'ALL' && campaignClient !== state.client) return false;
+  if (state.region !== 'ALL' && row.region !== state.region) return false;
+  if (state.manager !== 'ALL' && row.manager !== state.manager) return false;
+  if (state.banner !== 'ALL' && bannerOf(row) !== state.banner) return false;
+  return true;
+}
+
+// The form box is a substring match, so it works as both a picker (choose an
+// exact name from the dropdown) and a search ("clicks" narrows to every Clicks
+// form). Applied here so every page honours it, not just All Forms.
+function matchesForm(c) {
+  if (!state.formQ) return true;
+  return c.name.toLowerCase().includes(state.formQ.toLowerCase());
+}
+
+function getFilteredCampaigns() {
+  // Recompute each campaign's metrics from its storeRows under the current
+  // region/manager filter (client filter drops whole campaigns).
+  return DATA.campaigns
+    .filter(matchesForm)
+    .filter(c => state.client === 'ALL' || c.client === state.client)
+    .map(c => {
+      const rows = c.storeRows.filter(r => matchesFilters(r, c.client));
+      if (state.region === 'ALL' && state.manager === 'ALL' && state.banner === 'ALL') {
+        return c; // unfiltered at store level -- use the report's own authoritative numbers
+      }
+      const captured = rows.filter(r => r.captured === 'Yes').length;
+      const complianceVals = rows.filter(r => r.compliance !== null && r.compliance !== undefined).map(r => r.compliance);
+      const compliance = complianceVals.length ? complianceVals.reduce((a,b)=>a+b,0) / complianceVals.length : null;
+      return Object.assign({}, c, {
+        target: rows.length,
+        captured: captured,
+        coverage: rows.length ? captured / rows.length : null,
+        compliance: c.kind === 'price' ? null : compliance,
+        notCaptured: rows.length - captured,
+        storeRows: rows,
+      });
+    })
+    .filter(c => c.storeRows === undefined || true); // keep all; empty-after-filter campaigns still show as 0s
+}
+
+function distinctSorted(arr) { return [...new Set(arr.filter(Boolean))].sort(); }
+
+function buildFilterOptions() {
+  const clients = distinctSorted(DATA.campaigns.map(c => c.client));
+  const regions = distinctSorted(DATA.campaigns.flatMap(c => c.storeRows.map(r => r.region)));
+  const managers = distinctSorted(DATA.campaigns.flatMap(c => c.storeRows.map(r => r.manager)));
+  const banners = distinctSorted(DATA.campaigns.flatMap(c => c.storeRows.map(r => r.banner)));
+  const forms = distinctSorted(DATA.campaigns.map(c => c.name));
+  return { clients, regions, managers, banners, forms };
+}
+
+function renderFilters(opts) {
+  const mkOptions = (list, sel, allLabel) => `<option value="ALL">${allLabel}</option>` + list.map(v => `<option value="${esc(v)}" ${v===sel?'selected':''}>${esc(v)}</option>`).join('');
+  // <input list> gives a native type-to-search dropdown: the full form list is
+  // browsable, and typing narrows it. id is used to restore focus after render.
+  const matched = opts.forms.filter(f => !state.formQ || f.toLowerCase().includes(state.formQ.toLowerCase())).length;
+  return `
+    <div class="form-filter">
+      <input id="form-filter-input" class="search-input" list="form-options" autocomplete="off"
+             placeholder="All forms &mdash; type to search" value="${esc(state.formQ)}"
+             oninput="setFormQ(this.value)">
+      <datalist id="form-options">${opts.forms.map(f => `<option value="${esc(f)}"></option>`).join('')}</datalist>
+      ${state.formQ ? `<button class="chip-clear" title="Clear form filter" onclick="setFormQ('')">&times; ${matched} match${matched===1?'':'es'}</button>` : ''}
+    </div>
+    <select onchange="setFilter('client',this.value)">${mkOptions(opts.clients, state.client, 'All clients')}</select>
+    <select onchange="setFilter('banner',this.value)">${mkOptions(opts.banners, state.banner, 'All banners')}</select>
+    <select onchange="setFilter('region',this.value)">${mkOptions(opts.regions, state.region, 'All regions')}</select>
+    <select onchange="setFilter('manager',this.value)">${mkOptions(opts.managers, state.manager, 'All managers')}</select>
+    <button class="reset-btn" onclick="resetFilters()">Reset</button>
+  `;
+}
+
+function setFilter(key, value) { state[key] = value; render(); }
+function resetFilters() { state.client='ALL'; state.region='ALL'; state.manager='ALL'; state.banner='ALL'; state.captured='ALL'; state.qType='ALL'; state.qSearch=''; state.search=''; state.formQ=''; render(); }
+function setFormQ(v) { state.formQ = v; render(); }
+
+// Clicking a bar label filters by it; clicking the active one clears it, so the
+// label doubles as its own "off" switch and you never get stuck in a filter.
+function toggleFilter(key, value) {
+  state[key] = (state[key] === value) ? 'ALL' : value;
+  render();
+}
+function setPage(id) { state.page = id; render(); }
+function setSearch(v) { state.search = v; render(); }
+function setScope(v) { state.scope = v; render(); }
+
+function pageTitle() { return NAV_ITEMS.find(n => n.id === state.page).label; }
+
+function renderOverview(campaigns) {
+  const completeForms = campaigns.filter(c => c.status === 'complete');
+  const pendingForms  = campaigns.filter(c => c.status === 'pending' || c.status === 'locked');
+  const openForms     = completeForms.filter(isOpen);
+  const closedForms   = completeForms.filter(c => !isOpen(c));
+
+  // KPI row describes work in progress -- the P&G Overview framing. Falls back
+  // to all completed forms if nothing is open, so the page is never blank
+  // between cycles.
+  const kpiForms = openForms.length ? openForms : completeForms;
+  const kpiIsOpen = openForms.length > 0;
+
+  const kTarget   = kpiForms.reduce((a,c) => a + (c.target||0), 0);
+  const kCaptured = kpiForms.reduce((a,c) => a + (c.captured||0), 0);
+  const kNotCap   = kpiForms.reduce((a,c) => a + (c.notCaptured||0), 0);
+  const visited   = kTarget ? kCaptured / kTarget : null;
+
+  const kAudits = kpiForms.filter(c => c.kind !== 'price' && c.compliance !== null && c.compliance !== undefined);
+  const kCompliance = kAudits.length ? kAudits.reduce((a,c) => a + c.compliance, 0) / kAudits.length : null;
+
+  const timed = kpiForms.map(timing).filter(t => t.known);
+  const avgTimeGone = timed.length ? timed.reduce((a,t) => a + t.timeGone, 0) / timed.length : null;
+
+  const behind = openForms
+    .map(c => ({ c: c, gap: pacingGap(c), t: timing(c) }))
+    .filter(x => x.gap !== null)
+    .sort((a,b) => b.gap - a.gap);
+  // Same rule as the Behind Time Gone KPI, so the count matches this list.
+  const focus = behind.filter(x => x.gap > 0);
+
+  // Breakdowns follow the scope toggle; default matches the KPI row.
+  const scopeForms = state.scope === 'all' ? completeForms : kpiForms;
+  const cmp = k => (a,b) => (b[k] != null ? b[k] : -1) - (a[k] != null ? a[k] : -1);
+  const byRegion     = rollup(scopeForms, r => r.region).sort(cmp('coverage'));
+  const byRegionComp = [...byRegion].sort(cmp('compliance'));
+  const byBanner     = rollup(scopeForms, r => bannerOf(r))
+    .filter(a => a.target >= 15).sort(cmp('compliance'));
+
+  const kpi = (label, value, sub, color) => `
+      <div class="kpi-card"><div class="kpi-accent" style="background:${color};"></div><div class="kpi-body">
+        <span class="kpi-label">${label}</span><span class="kpi-value" style="color:${color};">${value}</span>
+        <span class="kpi-sub">${sub}</span>
+      </div></div>`;
+
+  // Shared bar-list renderer for the three breakdown panels.
+  // filterKey: which state filter the label drives ('region' / 'banner').
+  const barList = (rows, valueFn, subFn, filterKey) => rows.map((a,i) => {
+    const raw = valueFn(a);
+    const v = (raw === null || raw === undefined) ? null : raw * 100;
+    const active = filterKey && state[filterKey] === a.key;
+    const label = filterKey
+      ? `<button class="name name-btn ${active ? 'active' : ''}" title="${active ? 'Clear this filter' : 'Filter by ' + esc(a.key)}" onclick="toggleFilter('${filterKey}', ${jsArg(a.key)})">${esc(a.key)}</button>`
+      : `<span class="name">${esc(a.key)}</span>`;
+    return `
+        <div class="ranked-row ${active ? 'row-active' : ''}"><span class="rank">${i+1}</span>
+          ${label}
+          <div class="track"><div class="fill" style="width:${v === null ? 0 : v}%;background:${tierColor(v)};"></div></div>
+          <span class="value" style="color:${tierColor(v)};">${fmtPct(v,1)}</span>
+          <span class="value bar-meta" style="width:92px;color:var(--color-neutral-500);font-weight:400;">${subFn(a)}</span>
+        </div>`;
+  }).join('');
+
+  const scopeNote = state.scope === 'all'
+    ? `all ${completeForms.length} completed forms`
+    : (kpiIsOpen ? `${openForms.length} open form(s)` : `all ${completeForms.length} completed forms (nothing open)`);
+
+  const scopeToggle = `
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button class="reset-btn" style="${state.scope === 'open' ? 'border-color:var(--color-accent);color:var(--color-accent);' : ''}" onclick="setScope('open')">Open</button>
+          <button class="reset-btn" style="${state.scope === 'all' ? 'border-color:var(--color-accent);color:var(--color-accent);' : ''}" onclick="setScope('all')">All</button>
+        </div>`;
+
+  // One panel per entry; assembled below so the two region panels are true
+  // siblings inside .panel-row (they were previously nested, which stacked them).
+  const panelCapture = `
+      <div class="panel">
+        <div class="panel-head">
+          <div><div class="panel-title">Capturing Compliance by Region</div>
+          <div class="panel-sub">Targeted stores actually visited &middot; ${scopeNote}</div></div>
+          ${scopeToggle}
+        </div>
+        <div class="panel-body">${byRegion.length ? barList(byRegion, a => a.coverage, a => `${a.captured.toLocaleString()}/${a.target.toLocaleString()}`, 'region') : '<div class="empty-state">No store rows in scope.</div>'}</div>
+      </div>`;
+
+  const panelRegionComp = `
+      <div class="panel">
+        <div class="panel-head">
+          <div><div class="panel-title">Display Compliance by Region</div>
+          <div class="panel-sub">Avg store compliance, captured stores only &middot; ${scopeNote}</div></div>
+        </div>
+        <div class="panel-body">${byRegionComp.length ? barList(byRegionComp, a => a.compliance, a => `${a.compN.toLocaleString()} scored`, 'region') : '<div class="empty-state">No store rows in scope.</div>'}</div>
+      </div>`;
+
+  return `
+    <div class="kpi-grid">
+      ${kpi('Forms in Progress', kpiForms.length, kpiIsOpen ? 'In Progress' : 'no open forms &mdash; showing all completed', 'var(--color-accent)')}
+      ${kpi('% Stores Visited', fmtPct(pct(visited)), `${kCaptured.toLocaleString()} of ${kTarget.toLocaleString()} visited`, tierColor(pct(visited)))}
+      ${kpi('Compliance', fmtPct(pct(kCompliance)), kAudits.length === kpiForms.length ? `${kpiForms.length} form(s) in progress` : `${kAudits.length} of ${kpiForms.length} form(s) in progress have a scored metric`, tierColor(pct(kCompliance)))}
+      ${kpi('Time Gone', fmtPct(pct(avgTimeGone)), '', 'var(--color-neutral-400)')}
+      ${kpi('Stores Not Visited', kNotCap.toLocaleString(), 'no submission received yet', 'var(--nx-crit)')}
+      ${kpi('Behind Time Gone', behind.filter(x => x.gap > 0).length, 'forms behind time gone', 'var(--nx-warn)')}
+    </div>
+
+    <div class="panel"><div class="panel-body" style="padding:12px 15px;">
+      <div class="panel-title" style="margin-bottom:10px;">Where to Focus</div>
+      ${focus.length ? `<div class="focus-list">${focus.map(x => `
+        <div class="focus-item"><span class="dot"></span>
+          <span>${esc(x.c.name)} &mdash; <b>${fmtPct(pct(x.c.coverage),0)}</b> captured with <b>${fmtPct(x.t.timeGone*100,0)}</b> of the window gone &middot; ${fmtDaysLeft(x.t.daysLeft)}</span>
+          <span class="pct">+${Math.round(x.gap*100)}pts</span></div>
+      `).join('')}</div>` : '<div class="empty-state">No open form is behind its time gone.</div>'}
+    </div></div>
+
+    <div class="panel-row">${panelCapture}${panelRegionComp}</div>
+
+    ${behind.length ? `
+    <div class="panel">
+      <div class="panel-head"><div>
+        <div class="panel-title">Forms in Progress vs Time Gone</div>
+      </div></div>
+      <div class="panel-body">
+        ${behind.map((x,i) => {
+          const cov = pct(x.c.coverage), clock = x.t.timeGone*100;
+          const col = x.gap > 0.10 ? 'var(--nx-crit)' : (x.gap > 0 ? 'var(--nx-warn)' : 'var(--nx-good)');
+          return `
+          <div class="ranked-row"><span class="rank">${i+1}</span>
+            <button class="name name-btn ${state.formQ === x.c.name ? 'active' : ''}" style="width:220px;" title="${state.formQ === x.c.name ? 'Clear this filter' : 'Filter by ' + esc(x.c.name)}" onclick="setFormQ(state.formQ === ${jsArg(x.c.name)} ? '' : ${jsArg(x.c.name)})">${esc(x.c.name)}</button>
+            <div class="track" style="position:relative;">
+              <div class="fill" style="width:${cov}%;background:${col};"></div>
+              <div title="${fmtPct(clock,0)} of window elapsed" style="position:absolute;top:-2px;bottom:-2px;left:${clock}%;width:2px;background:var(--color-neutral-100);opacity:.85;"></div>
+            </div>
+            <span class="value" style="color:${col};">${fmtPct(cov,0)}</span>
+            <span class="value" style="width:78px;color:var(--color-neutral-500);font-weight:400;">${fmtDaysLeft(x.t.daysLeft)}</span>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="table-note">White marker = share of the survey window elapsed. Bar left of the marker means capture is trailing the clock.</div>
+    </div>` : ''}
+
+    <div class="panel">
+      <div class="panel-head"><div>
+        <div class="panel-title">Display Compliance by Banner</div>
+      </div></div>
+      <div class="panel-body">
+        ${byBanner.length ? barList(byBanner, a => a.compliance, a => `${a.compN.toLocaleString()} of ${a.target.toLocaleString()}`, 'banner') : '<div class="empty-state">No store rows in scope.</div>'}
+      </div>
+    </div>
+  `;
+}
+
+function renderCampaignsTable(campaigns) {
+  const filtered = campaigns
+    .filter(c => !state.search || c.name.toLowerCase().includes(state.search.toLowerCase()))
+    // Worst first, mirroring the Power BI Priority Summary. Open campaigns lead,
+    // ranked by pacing gap, because those are the ones still worth chasing.
+    .sort((a, b) => {
+      const ao = isOpen(a), bo = isOpen(b);
+      if (ao !== bo) return ao ? -1 : 1;
+      if (ao) return (pacingGap(b) ?? -Infinity) - (pacingGap(a) ?? -Infinity);
+      const av = a.compliance ?? Infinity, bv = b.compliance ?? Infinity;
+      return av - bv;
+    });
+  const rows = filtered.map(c => {
+    let typeTag, metric;
+    if (c.status === 'pending') {
+      typeTag = '<span class="type-tag audit">Pending</span>';
+      metric = '<span class="pill na">Report not built yet</span>';
+    } else if (c.status === 'locked') {
+      typeTag = '<span class="type-tag audit">Locked</span>';
+      metric = '<span class="pill na">File open &mdash; retry next refresh</span>';
+    } else {
+      typeTag = c.kind === 'sos' ? '<span class="type-tag sos">SOS / Facings</span>' : c.kind === 'price' ? '<span class="type-tag price">Price Survey</span>' : '<span class="type-tag audit">Compliance Audit</span>';
+      metric = c.kind === 'price'
+        ? '<span class="pill na">N/A &mdash; see KPI results</span>'
+        : `<span class="mini-track"><span class="mini-fill" style="width:${pct(c.compliance)}%;background:${tierColor(pct(c.compliance))};"></span></span><span class="pill ${tierClass(pct(c.compliance))}">${fmtPct(pct(c.compliance))}${c.mixed?'*':''}</span>`;
+    }
+    const t = timing(c);
+    const window = t.known
+      ? `<span style="white-space:nowrap;">${c.periodStart.slice(5)} &rarr; ${c.periodEnd.slice(5)}</span>`
+      : '<span style="color:var(--color-neutral-500);">—</span>';
+    const gap = pacingGap(c);
+    const timeGoneCell = t.known
+      ? `<span class="mini-track"><span class="mini-fill" style="width:${t.timeGone*100}%;background:var(--color-neutral-400);"></span></span><span class="pill na">${fmtPct(t.timeGone*100,0)}</span>`
+      : '<span style="color:var(--color-neutral-500);">—</span>';
+    const statusCell = !t.known
+      ? '<span class="pill na">—</span>'
+      : t.open
+        ? `<span class="pill ${gap > 0.10 ? 'crit' : gap > 0 ? 'warn' : 'good'}">${fmtDaysLeft(t.daysLeft)}${gap !== null && gap > 0 ? ` &middot; ${Math.round(gap*100)}pts behind` : ''}</span>`
+        : '<span class="pill na">Closed</span>';
+    return `<tr>
+      <td class="name-cell">${esc(c.name)}</td>
+      <td>${window}</td>
+      <td>${timeGoneCell}</td>
+      <td>${statusCell}</td>
+      <td class="num">${c.target ?? '—'}</td>
+      <td class="num">${c.captured ?? '—'}</td>
+      <td class="num">${fmtPct(pct(c.coverage))}</td>
+      <td>${metric}</td>
+      <td class="num">${c.notCaptured ?? '—'}</td>
+    </tr>`;
+  }).join('');
+  return `
+    <div class="panel">
+      <div class="panel-head">
+        <div><div class="panel-title">All Forms</div><div class="panel-sub">${filtered.length} form(s) &middot; open forms first, ranked by pacing gap; closed ranked by compliance</div></div>
+        <input class="search-input" placeholder="Search form…" value="${esc(state.search)}" oninput="setSearch(this.value)">
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Form</th><th>Start &ndash; End Date</th><th>Time Gone</th><th>Status</th><th class="num">Target</th><th class="num">Captured</th><th class="num">Capturing Compliance</th><th>Compliance %</th><th class="num">Not Captured</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="9" class="empty-state">No forms match.</td></tr>'}</tbody>
+      </table></div>
+    </div>
+  `;
+}
+
+function renderPricing(campaigns) {
+  // Price Survey forms carry no Yes/No or Target-vs-actual metric (Dashboard
+  // label "Compliance N/A") -- there's nothing to score, so this page shows
+  // coverage only and keeps them out of the compliance-ranked pages above.
+  // Pending/locked forms carry no Dashboard data yet, so kind is unknown until
+  // a report exists -- this page can only show price forms once they're built.
+  const priceForms = campaigns.filter(c => c.kind === 'price');
+  const filtered = priceForms
+    .filter(c => !state.search || c.name.toLowerCase().includes(state.search.toLowerCase()))
+    .sort((a, b) => {
+      const ao = isOpen(a), bo = isOpen(b);
+      if (ao !== bo) return ao ? -1 : 1;
+      return (pacingGap(b) ?? -Infinity) - (pacingGap(a) ?? -Infinity);
+    });
+
+  const rows = filtered.map(c => {
+    const t = timing(c);
+    const window = t.known
+      ? `<span style="white-space:nowrap;">${c.periodStart.slice(5)} &rarr; ${c.periodEnd.slice(5)}</span>`
+      : '<span style="color:var(--color-neutral-500);">—</span>';
+    const statusCell = c.status === 'pending'
+      ? '<span class="pill na">Report not built yet</span>'
+      : c.status === 'locked'
+        ? '<span class="pill na">File open &mdash; retry next refresh</span>'
+        : !t.known
+          ? '<span class="pill na">—</span>'
+          : t.open
+            ? `<span class="pill ${(pacingGap(c) ?? 0) > 0.10 ? 'crit' : (pacingGap(c) ?? 0) > 0 ? 'warn' : 'good'}">${fmtDaysLeft(t.daysLeft)}</span>`
+            : '<span class="pill na">Closed</span>';
+    return `<tr>
+      <td class="name-cell">${esc(c.name)}</td>
+      <td>${window}</td>
+      <td>${statusCell}</td>
+      <td class="num">${c.target ?? '—'}</td>
+      <td class="num">${c.captured ?? '—'}</td>
+      <td class="num">${fmtPct(pct(c.coverage))}</td>
+      <td class="num">${c.notCaptured ?? '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const kTarget = priceForms.reduce((a,c) => a + (c.target||0), 0);
+  const kCaptured = priceForms.reduce((a,c) => a + (c.captured||0), 0);
+  const kVisited = kTarget ? kCaptured / kTarget : null;
+
+  return `
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+      <div class="kpi-card"><div class="kpi-accent" style="background:var(--color-accent);"></div><div class="kpi-body">
+        <span class="kpi-label">Price Survey Forms</span><span class="kpi-value">${priceForms.length}</span>
+        <span class="kpi-sub">${priceForms.filter(isOpen).length} open now</span>
+      </div></div>
+      <div class="kpi-card"><div class="kpi-accent" style="background:${tierColor(pct(kVisited))};"></div><div class="kpi-body">
+        <span class="kpi-label">% Stores Visited</span><span class="kpi-value" style="color:${tierColor(pct(kVisited))};">${fmtPct(pct(kVisited))}</span>
+        <span class="kpi-sub">${kCaptured.toLocaleString()} of ${kTarget.toLocaleString()} visited</span>
+      </div></div>
+      <div class="kpi-card"><div class="kpi-accent" style="background:var(--color-neutral-400);"></div><div class="kpi-body">
+        <span class="kpi-label">Stores Not Visited</span><span class="kpi-value">${(kTarget-kCaptured).toLocaleString()}</span>
+        <span class="kpi-sub">no submission received yet</span>
+      </div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <div><div class="panel-title">Price Survey Forms</div><div class="panel-sub">${filtered.length} form(s) &middot; coverage only &mdash; no comparable compliance metric</div></div>
+        <input class="search-input" placeholder="Search form…" value="${esc(state.search)}" oninput="setSearch(this.value)">
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Form</th><th>Window</th><th>Status</th><th class="num">Target</th><th class="num">Captured</th><th class="num">Capturing Compliance</th><th class="num">Not Captured</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="7" class="empty-state">No price survey forms match.</td></tr>'}</tbody>
+      </table></div>
+      <div class="table-note">These are the pure price-survey forms (Dashboard label "Compliance N/A") &mdash; no Yes/No or Target metric exists to score, so they're tracked here on coverage alone and left out of the compliance-ranked pages.</div>
+    </div>
+  `;
+}
+
+// --- Store-level question answers (loaded on demand) -----------------------
+// All forms' answers together are ~870k rows / 274MB, so they are never part of
+// the main payload. Each form has its own file under questions/, fetched only
+// when a question on that form is opened, and cached for the session.
+const QUESTION_FILE_CACHE = {};
+let QDRILL = null;          // { form, question, file, loading, error, rows }
+
+function questionFileFor(formName) {
+  const c = DATA.campaigns.find(x => x.name === formName);
+  return c && c.questionFile ? c.questionFile : null;
+}
+
+async function openQuestionDrill(formName, questionText) {
+  const file = questionFileFor(formName);
+  if (!file) {
+    QDRILL = { form: formName, question: questionText, error: 'No store-level answers were exported for this form.' };
+    render();
+    return;
+  }
+  QDRILL = { form: formName, question: questionText, file: file, loading: true };
+  render();
+  try {
+    if (!QUESTION_FILE_CACHE[file]) {
+      const payload = await loadDataFile('questions/' + file, false);
+      QUESTION_FILE_CACHE[file] = (payload && payload.rows) || [];
+    }
+    const all = QUESTION_FILE_CACHE[file];
+    QDRILL = {
+      form: formName, question: questionText, file: file,
+      rows: all.filter(r => r.question === questionText),
+    };
+  } catch (e) {
+    QDRILL = { form: formName, question: questionText, file: file, error: e.message };
+  }
+  render();
+}
+
+function closeQuestionDrill() { QDRILL = null; render(); }
+
+function answerTone(r) {
+  if (r.isYes === true || r.isYes === 'True' || r.isYes === 'Yes' || r.isYes === 1) return 'good';
+  if (r.isNo === true || r.isNo === 'True' || r.isNo === 'Yes' || r.isNo === 1) return 'crit';
+  if (r.targetMet === 'Yes' || r.targetMet === true) return 'good';
+  if (r.targetMet === 'No' || r.targetMet === false) return 'crit';
+  return 'na';
+}
+
+function exportQuestionDrill() {
+  if (!QDRILL || !QDRILL.rows) return;
+  const cols = ['store', 'storeName', 'region', 'manager', 'rep', 'captured', 'answer', 'target', 'targetMet'];
+  const labels = ['Store Code', 'Store Name', 'Region', 'Supervisor', 'Rep Name', 'Store Visited', 'Answer', 'Numeric Target', 'Target Met'];
+  const q = v => '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"';
+  const lines = [labels.map(q).join(',')];
+  QDRILL.rows.forEach(r => lines.push(cols.map(c => q(r[c])).join(',')));
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'question-answers-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
+function renderQuestionDrill() {
+  if (!QDRILL) return '';
+  const head = `
+      <div class="panel-head">
+        <div><div class="panel-title">Store Answers</div>
+        <div class="panel-sub">${esc(QDRILL.question)} &middot; ${esc(QDRILL.form)}</div></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          ${QDRILL.rows ? `<button class="reset-btn" onclick="exportQuestionDrill()">Export to Excel</button>` : ''}
+          <button class="reset-btn" onclick="closeQuestionDrill()">&times; Close</button>
+        </div>
+      </div>`;
+
+  if (QDRILL.loading) {
+    return `<div class="panel drill">${head}<div class="panel-body"><div class="empty-state">Loading store answers&hellip;</div></div></div>`;
+  }
+  if (QDRILL.error) {
+    return `<div class="panel drill">${head}<div class="panel-body"><div class="empty-state" style="color:var(--nx-crit);">${esc(QDRILL.error)}</div></div></div>`;
+  }
+
+  const rows = QDRILL.rows || [];
+  const LIMIT = 400;
+  const yes = rows.filter(r => answerTone(r) === 'good').length;
+  const no = rows.filter(r => answerTone(r) === 'crit').length;
+
+  return `
+    <div class="panel drill">
+      ${head}
+      <div class="panel-body" style="padding-bottom:6px;">
+        <span class="pill good">Yes ${yes.toLocaleString()}</span>
+        <span class="pill crit" style="margin-left:6px;">No ${no.toLocaleString()}</span>
+        <span class="pill na" style="margin-left:6px;">Total ${rows.length.toLocaleString()}</span>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th>Store</th><th>Region</th><th>Supervisor</th><th>Rep Name</th>
+          <th>Store Visited</th><th>Answer</th><th class="num">Target</th><th>Target Met</th>
+        </tr></thead>
+        <tbody>${rows.length ? rows.slice(0, LIMIT).map(r => `
+          <tr>
+            <td class="name-cell">${esc(r.storeName)} <span style="color:#4a6b8a;">(${esc(r.store)})</span></td>
+            <td>${esc(r.region) || '—'}</td>
+            <td>${esc(r.manager) || '—'}</td>
+            <td>${esc(r.rep) || '—'}</td>
+            <td><span class="pill ${r.captured === 'Yes' ? 'good' : 'crit'}">${esc(r.captured) || '—'}</span></td>
+            <td><span class="pill ${answerTone(r)}">${esc(r.answer) || '—'}</span></td>
+            <td class="num">${r.target === null || r.target === undefined || r.target === '' ? '—' : esc(r.target)}</td>
+            <td>${r.targetMet === null || r.targetMet === undefined || r.targetMet === '' ? '—' : esc(r.targetMet)}</td>
+          </tr>
+        `).join('') : `<tr><td colspan="8" class="empty-state">No store answers recorded for this question.</td></tr>`}</tbody>
+      </table></div>
+      ${rows.length > LIMIT ? `<div class="table-note">Showing first ${LIMIT} of ${rows.length.toLocaleString()} &mdash; Export includes all ${rows.length.toLocaleString()}.</div>` : ''}
+    </div>
+  `;
+}
+
+const QUESTION_COLUMNS = [
+  { key: 'form',       label: 'Form' },
+  { key: 'group',      label: 'Group' },
+  { key: 'type',       label: 'Type' },
+  { key: 'question',   label: 'Question' },
+  { key: 'target',     label: 'Target' },
+  { key: 'answered',   label: 'Answered' },
+  { key: 'yes',        label: 'Yes' },
+  { key: 'no',         label: 'No' },
+  { key: 'compliance', label: 'Compliance' },
+];
+
+// One row per question per form. Region/banner/manager filters do not apply --
+// Question Summary is aggregated per form, with no store dimension to filter on.
+function questionRows(campaigns) {
+  const out = [];
+  campaigns.forEach(c => {
+    (c.questionRows || []).forEach(q => {
+      if (state.qType !== 'ALL' && q.type !== state.qType) return;
+      out.push({
+        form: c.name,
+        group: q.group === 'Ungrouped' ? '' : (q.group || ''),
+        type: q.type || '',
+        question: q.question || '',
+        target: q.target,
+        answered: q.answered,
+        yes: q.yes,
+        no: q.no,
+        compliance: (q.compliance === null || q.compliance === undefined || q.compliance === '') ? null : Number(q.compliance),
+        numericTarget: q.numericTarget,
+      });
+    });
+  });
+  const rows = state.qSearch
+    ? out.filter(r => (r.question + ' ' + r.form).toLowerCase().includes(state.qSearch.toLowerCase()))
+    : out;
+  // Worst first; unscored question types (Numeric KPI, Supporting, Other) sort
+  // to the bottom rather than being treated as 0%.
+  return rows.sort((a, b) => {
+    if (a.compliance === null && b.compliance === null) return 0;
+    if (a.compliance === null) return 1;
+    if (b.compliance === null) return -1;
+    return a.compliance - b.compliance;
+  });
+}
+
+function setQType(v) { state.qType = (state.qType === v) ? 'ALL' : v; render(); }
+function setQSearch(v) { state.qSearch = v; render(); }
+
+function exportQuestions() {
+  const rows = questionRows(getFilteredCampaigns());
+  const q = v => '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"';
+  const lines = [QUESTION_COLUMNS.map(c => q(c.label)).join(',')];
+  for (const r of rows) {
+    lines.push(QUESTION_COLUMNS.map(c => c.key === 'compliance'
+      ? q(r.compliance === null ? '' : (r.compliance * 100).toFixed(1) + '%')
+      : q(r[c.key])).join(','));
+  }
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'form-questions-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
+function renderQuestions(campaigns) {
+  const rows = questionRows(campaigns);
+  const LIMIT = 600;
+
+  // Type counts ignore the type pill so each pill shows what it would select.
+  const savedType = state.qType;
+  state.qType = 'ALL';
+  const all = questionRows(campaigns);
+  state.qType = savedType;
+  const counts = {};
+  all.forEach(r => { counts[r.type] = (counts[r.type] || 0) + 1; });
+
+  const scored = rows.filter(r => r.compliance !== null);
+  const avg = scored.length ? scored.reduce((a, r) => a + r.compliance, 0) / scored.length : null;
+  const failing = scored.filter(r => r.compliance < 0.50).length;
+
+  const pill = (type, tone) => `
+    <button class="filter-pill ${state.qType === type ? 'active ' + tone : tone}"
+            onclick="setQType('${type}')">${type} <b>${(counts[type] || 0).toLocaleString()}</b></button>`;
+
+  return `
+    ${renderQuestionDrill()}
+    <div class="kpi-grid" style="grid-template-columns:repeat(4,minmax(0,1fr));">
+      <div class="kpi-card"><div class="kpi-accent" style="background:var(--color-accent);"></div><div class="kpi-body">
+        <span class="kpi-label">Questions</span><span class="kpi-value">${rows.length.toLocaleString()}</span>
+        <span class="kpi-sub">across ${new Set(rows.map(r => r.form)).size} form(s)</span>
+      </div></div>
+      <div class="kpi-card"><div class="kpi-accent" style="background:${tierColor(pct(avg))};"></div><div class="kpi-body">
+        <span class="kpi-label">Avg Compliance</span><span class="kpi-value" style="color:${tierColor(pct(avg))};">${fmtPct(pct(avg))}</span>
+        <span class="kpi-sub">${scored.length.toLocaleString()} scored question(s)</span>
+      </div></div>
+      <div class="kpi-card"><div class="kpi-accent" style="background:var(--nx-crit);"></div><div class="kpi-body">
+        <span class="kpi-label">Below 50%</span><span class="kpi-value" style="color:var(--nx-crit);">${failing.toLocaleString()}</span>
+        <span class="kpi-sub">scored questions under half</span>
+      </div></div>
+      <div class="kpi-card"><div class="kpi-accent" style="background:var(--color-neutral-400);"></div><div class="kpi-body">
+        <span class="kpi-label">Unscored</span><span class="kpi-value">${(rows.length - scored.length).toLocaleString()}</span>
+        <span class="kpi-sub">KPI / supporting &mdash; no Yes/No rate</span>
+      </div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><div class="panel-title">Form Questions</div>
+        <div class="panel-sub">Worst compliance first &middot; ${rows.length.toLocaleString()} question(s)</div></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          ${pill('Yes/No', 'good')}
+          ${pill('Numeric KPI', 'crit')}
+          <input class="search-input" placeholder="Search question or form…" value="${esc(state.qSearch)}" oninput="setQSearch(this.value)">
+          <button class="reset-btn" onclick="exportQuestions()">Export to Excel</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th>Form</th><th>Group</th><th>Type</th><th>Question</th>
+          <th class="num">Target</th><th class="num">Answered</th><th class="num">Yes</th><th class="num">No</th><th>Compliance</th>
+        </tr></thead>
+        <tbody>${rows.length ? rows.slice(0, LIMIT).map(r => `
+          <tr>
+            <td class="name-cell" title="${esc(r.form)}">${esc(r.form)}</td>
+            <td>${esc(r.group) || '—'}</td>
+            <td><span class="type-tag ${r.type === 'Yes/No' ? 'audit' : 'sos'}">${esc(r.type) || '—'}</span></td>
+            <td class="q-cell"><button class="name-btn" style="width:100%;" title="Show store answers for this question"
+                onclick="openQuestionDrill(${jsArg(r.form)}, ${jsArg(r.question)})">${esc(r.question)}</button></td>
+            <td class="num">${r.target === null || r.target === undefined ? '—' : Number(r.target).toLocaleString()}</td>
+            <td class="num">${r.answered === null || r.answered === undefined ? '—' : Number(r.answered).toLocaleString()}</td>
+            <td class="num">${r.yes === null || r.yes === undefined ? '—' : Number(r.yes).toLocaleString()}</td>
+            <td class="num">${r.no === null || r.no === undefined ? '—' : Number(r.no).toLocaleString()}</td>
+            <td>${r.compliance === null
+                  ? `<span class="pill na">${r.numericTarget ? 'target ' + esc(r.numericTarget) : 'n/a'}</span>`
+                  : `<span class="mini-track"><span class="mini-fill" style="width:${pct(r.compliance)}%;background:${tierColor(pct(r.compliance))};"></span></span><span class="pill ${tierClass(pct(r.compliance))}">${fmtPct(pct(r.compliance))}</span>`}</td>
+          </tr>
+        `).join('') : `<tr><td colspan="9" class="empty-state">No questions match the current filters.</td></tr>`}</tbody>
+      </table></div>
+      <div class="table-note">
+        ${rows.length > LIMIT ? `Showing first ${LIMIT} of ${rows.length.toLocaleString()} on screen &mdash; Export includes all ${rows.length.toLocaleString()}. ` : ''}Click a question to load its store-by-store answers. Region, banner and store filters do not apply to this table: Question Summary is aggregated per form and has no store dimension. Only Yes/No questions carry a compliance rate.
+      </div>
+    </div>
+  `;
+}
+
+// Columns follow the requested Store Level Detail layout. Seibel ID, Display
+// Type, Brand, Issue Detail, Issue Tracking and Image 2/3 are omitted: the
+// compliance reports carry no such fields (only a single image URL per store),
+// so there is nothing to populate them from.
+const STORE_DETAIL_COLUMNS = [
+  { key: 'region',     label: 'Region' },
+  { key: 'banner',     label: 'Banner' },
+  { key: 'promotion',  label: 'Promotion' },
+  { key: 'startDate',  label: 'Start Date' },
+  { key: 'endDate',    label: 'End Date' },
+  { key: 'rep',        label: 'Rep Name' },
+  { key: 'supervisor', label: 'Supervisor' },
+  { key: 'storeName',  label: 'Store Name' },
+  { key: 'visited',    label: 'Store Visited' },
+  { key: 'compliance', label: 'Compliance' },
+  { key: 'image',      label: 'Image 1' },
+];
+
+// Flatten every in-scope store row into one record per store/form. Shared by
+// the table and the Excel export so the file always matches what is on screen.
+function storeDetailRows(campaigns) {
+  const out = [];
+  campaigns.forEach(c => {
+    (c.storeRows || []).forEach(r => {
+      if (!matchesFilters(r, c.client)) return;
+      const visited = r.captured === 'Yes';
+      if (state.captured === 'Yes' && !visited) return;
+      if (state.captured === 'No' && visited) return;
+      out.push({
+        region: r.region || '',
+        banner: r.banner || '',
+        promotion: c.name,
+        startDate: c.periodStart || '',
+        endDate: c.periodEnd || '',
+        rep: r.rep || '',
+        supervisor: r.manager || '',
+        storeName: r.storeName || '',
+        storeCode: r.store || '',
+        visited: visited ? 'Yes' : 'No',
+        compliance: (r.compliance === null || r.compliance === undefined) ? null : r.compliance,
+        image: r.imageUrl || '',
+      });
+    });
+  });
+  if (state.search) {
+    const q = state.search.toLowerCase();
+    return out.filter(r => (r.storeName + ' ' + r.storeCode).toLowerCase().includes(q));
+  }
+  return out;
+}
+
+function setCaptured(v) { state.captured = (state.captured === v) ? 'ALL' : v; render(); }
+
+// Excel opens CSV directly. A BOM keeps store names with accents intact, and
+// every field is quoted so commas in form names cannot shift columns.
+function exportStoreDetail() {
+  const rows = storeDetailRows(getFilteredCampaigns());
+  const q = v => '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"';
+  const lines = [STORE_DETAIL_COLUMNS.map(c => q(c.label)).join(',')];
+  for (const r of rows) {
+    lines.push(STORE_DETAIL_COLUMNS.map(c => {
+      if (c.key === 'compliance') return q(r.compliance === null ? '' : (r.compliance * 100).toFixed(1) + '%');
+      return q(r[c.key]);
+    }).join(','));
+  }
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'store-level-detail-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
+function renderStoreDetail(campaigns) {
+  const rows = storeDetailRows(campaigns);
+  const LIMIT = 500;
+
+  // Counts ignore the captured pill itself, so each pill always shows the size
+  // of what it would select rather than the size of the current selection.
+  const saved = state.captured;
+  state.captured = 'ALL';
+  const all = storeDetailRows(campaigns);
+  state.captured = saved;
+  const nCap = all.filter(r => r.visited === 'Yes').length;
+  const nUncap = all.length - nCap;
+
+  const pill = (val, label, count, tone) => `
+    <button class="filter-pill ${state.captured === val ? 'active ' + tone : tone}"
+            onclick="setCaptured('${val}')">${label} <b>${count.toLocaleString()}</b></button>`;
+
+  return `
+    <div class="panel">
+      <div class="panel-head">
+        <div><div class="panel-title">Store Level Detail</div>
+        <div class="panel-sub">${rows.length.toLocaleString()} row(s) across current filters</div></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          ${pill('Yes', 'Captured', nCap, 'good')}
+          ${pill('No', 'Not Captured', nUncap, 'crit')}
+          <input class="search-input" placeholder="Search store…" value="${esc(state.search)}" oninput="setSearch(this.value)">
+          <button class="reset-btn" onclick="exportStoreDetail()">Export to Excel</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr>${STORE_DETAIL_COLUMNS.map(c => `<th>${c.label}</th>`).join('')}</tr></thead>
+        <tbody>${rows.length ? rows.slice(0, LIMIT).map(r => `
+          <tr>
+            <td>${esc(r.region) || '—'}</td>
+            <td>${esc(r.banner) || '—'}</td>
+            <td class="name-cell">${esc(r.promotion)}</td>
+            <td>${esc(r.startDate) || '—'}</td>
+            <td>${esc(r.endDate) || '—'}</td>
+            <td>${esc(r.rep) || '—'}</td>
+            <td>${esc(r.supervisor) || '—'}</td>
+            <td class="name-cell">${esc(r.storeName)} <span style="color:#4a6b8a;">(${esc(r.storeCode)})</span></td>
+            <td><span class="pill ${r.visited === 'Yes' ? 'good' : 'crit'}">${r.visited}</span></td>
+            <td>${r.compliance === null ? '—' : `<span class="pill ${tierClass(pct(r.compliance))}">${fmtPct(pct(r.compliance))}</span>`}</td>
+            <td>${r.image ? `<a href="${esc(r.image)}" target="_blank" rel="noopener" style="color:var(--color-accent-300);">View</a>` : '—'}</td>
+          </tr>
+        `).join('') : `<tr><td colspan="${STORE_DETAIL_COLUMNS.length}" class="empty-state">No stores match the current filters.</td></tr>`}</tbody>
+      </table></div>
+      ${rows.length > LIMIT ? `<div class="table-note">Showing first ${LIMIT} of ${rows.length.toLocaleString()} on screen &mdash; Export to Excel includes all ${rows.length.toLocaleString()}.</div>` : ''}
+    </div>
+  `;
+}
+function renderPage(campaigns) {
+  switch (state.page) {
+    case 'overview': return renderOverview(campaigns);
+    case 'campaigns': return renderCampaignsTable(campaigns);
+    case 'pricing': return renderPricing(campaigns);
+    case 'questions': return renderQuestions(campaigns);
+    case 'notcaptured': return renderStoreDetail(campaigns);
+    default: return '';
+  }
+}
+
+// render() replaces the whole tree, which would drop focus on every keystroke.
+// Capture the caret before, restore after.
+function withFocusPreserved(fn) {
+  const active = document.activeElement;
+  const id = active && active.id;
+  const pos = active && active.selectionStart;
+  fn();
+  if (!id) return;
+  const next = document.getElementById(id);
+  if (!next) return;
+  next.focus();
+  if (pos !== null && pos !== undefined && next.setSelectionRange) {
+    try { next.setSelectionRange(pos, pos); } catch (e) { /* not a text input */ }
+  }
+}
+
+function render() { withFocusPreserved(renderTree); }
+
+function renderTree() {
+  if (!DATA) return;
+  const opts = buildFilterOptions();
+  const campaigns = getFilteredCampaigns();
+  const genDate = new Date(DATA.generatedAt);
+  const storesInView = campaigns.reduce((a,c) => a + (c.captured||0), 0);
+
+  document.getElementById('app').innerHTML = `
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark"><img src="assets/meridian-mark.png" alt="Meridian"></div>
+          <div class="brand-name">Meridian <span>Nexus</span></div>
+        </div>
+        <div class="brand-sub">Capture</div>
+        <nav>
+          ${NAV_ITEMS.map(n => `<button class="nav-item ${n.id===state.page?'active':''}" onclick="setPage('${n.id}')">${navIcon(n.icon)}<span>${n.label}</span></button>`).join('')}
+        </nav>
+        <div class="sidebar-foot">
+          ${ACCOUNT ? `<div class="who" title="${esc(ACCOUNT.username || '')}">${esc(ACCOUNT.name || ACCOUNT.username || '')}</div>
+          <button class="signout" onclick="signOut()">Sign out</button>` : ''}
+          <div>Last updated<br><b>${genDate.toLocaleString('en-ZA', {dateStyle:'medium', timeStyle:'short'})}</b></div>
+        </div>
+      </aside>
+      <main class="main">
+        <div class="main-inner">
+          <div class="page-head">
+            <div><h1>${pageTitle()}</h1></div>
+            <div class="head-stat"><div class="head-stat-label">Stores captured</div><div class="head-stat-value">${storesInView.toLocaleString()}</div></div>
+          </div>
+          <div class="divider"></div>
+          <div class="filters">${renderFilters(opts)}</div>
+          <div class="content">${renderPage(campaigns)}</div>
+        </div>
+      </main>
+    </div>
+  `;
+}
+
+// Nothing loads until there is a signed-in account. On a deployed origin
+// requireAuth() redirects to login.html and never resolves; on localhost it
+// resolves immediately, matching the Call Cycle portal's local-dev bypass.
+requireAuth()
+  .then(account => {
+    ACCOUNT = account;
+    return loadDataFile('compliance_data.json', false);
+  })
+  .then(d => { DATA = d; render(); })
+  .catch(e => { document.getElementById('app').innerHTML = `<div id="page-loading">Could not load compliance_data.json &mdash; ${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>

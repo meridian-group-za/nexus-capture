@@ -1,0 +1,213 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Sign in &middot; Meridian Nexus Capture</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
+<script src="./auth.js"></script>
+<style>
+  * { box-sizing:border-box; }
+  html, body { margin:0; padding:0; min-height:100%; }
+  :root {
+    --bg:#0a1f3d; --card:#122f52; --card-border:#24456d;
+    --text:#f3f7fc; --muted:#9db4d0; --dim:#7e9ac0;
+    --accent:#ec6d25; --accent-2:#f6862f; --accent-300:#f2955c;
+    --brand-blue:#8fb8e8;
+  }
+  body {
+    font-family:'Poppins', system-ui, sans-serif; color:var(--text);
+    -webkit-font-smoothing:antialiased; background:var(--bg);
+  }
+
+  /* Full-bleed hero. The overlay keeps the left-hand copy legible whatever the
+     photograph is doing behind it, and darkens toward the right so the card
+     reads as a distinct surface. */
+  .hero {
+    position:fixed; inset:0; z-index:0;
+    background-image:
+      linear-gradient(100deg, rgba(10,31,61,.94) 0%, rgba(10,31,61,.72) 34%, rgba(10,31,61,.86) 66%, rgba(10,31,61,.96) 100%),
+      url('assets/signin-bg.jpg');
+    background-size:cover, cover;
+    background-position:center, center;
+  }
+
+  .page { position:relative; z-index:1; min-height:100vh; display:flex; flex-direction:column;
+    padding:30px clamp(22px,4vw,54px) 20px; }
+
+  .wordmark { font-size:15px; font-weight:700; letter-spacing:.16em; color:var(--brand-blue); }
+
+  .grid { flex:1; display:grid; grid-template-columns:minmax(0,1.15fr) minmax(360px,540px);
+    gap:clamp(28px,5vw,72px); align-items:center; padding:26px 0 34px; }
+
+  /* ---- left column ---- */
+  .eyebrow { font-size:11.5px; font-weight:700; letter-spacing:.26em; color:var(--accent); margin-bottom:10px; }
+  .lockup { font-size:clamp(38px,4.6vw,58px); font-weight:800; line-height:1.02; letter-spacing:-.02em; margin:0; }
+  .lockup span { color:var(--accent); }
+  .rule { width:74px; height:4px; background:var(--accent); border-radius:2px; margin:20px 0 22px; }
+  .tagline { font-size:clamp(19px,2vw,25px); font-weight:500; margin:0 0 14px; letter-spacing:-.01em; }
+  .lede { font-size:14px; line-height:1.72; color:var(--muted); margin:0 0 40px; max-width:52ch; }
+
+  .features { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:clamp(18px,2.4vw,34px); max-width:660px; }
+  .feature h3 { font-size:13.5px; font-weight:700; margin:16px 0 8px; line-height:1.35; }
+  .feature p { font-size:12.5px; line-height:1.6; color:var(--muted); margin:0; }
+  .hex { width:52px; height:52px; display:block; }
+
+  /* ---- sign-in card ---- */
+  .card { background:color-mix(in srgb, var(--card) 88%, transparent);
+    border:1px solid var(--card-border); border-radius:16px; padding:38px 34px 30px;
+    box-shadow:0 30px 70px rgba(0,0,0,.42); backdrop-filter:blur(3px); }
+  .card-mark { width:58px; height:58px; margin:0 auto 16px; display:block; object-fit:contain; }
+  .card h2 { text-align:center; font-size:21px; font-weight:700; margin:0 0 5px; }
+  .card .sub { text-align:center; font-size:13px; color:var(--dim); margin-bottom:26px; }
+  .divider { height:1px; background:var(--card-border); margin:0 0 24px; }
+
+  .ms-btn { width:100%; display:inline-flex; align-items:center; justify-content:center; gap:11px;
+    background:#fff; border:none; border-radius:9px; padding:15px 18px; cursor:pointer;
+    color:#1b1b1f; font-family:inherit; font-size:14px; font-weight:600;
+    transition:transform .12s ease, box-shadow .12s ease; }
+  .ms-btn:hover { transform:translateY(-1px); box-shadow:0 8px 22px rgba(0,0,0,.3); }
+  .ms-btn:disabled { opacity:.65; cursor:default; transform:none; }
+  .ms-btn svg { width:19px; height:19px; flex:0 0 19px; }
+
+  .foot-note { margin-top:20px; text-align:center; font-size:11.5px; color:var(--dim); }
+
+  .msg { margin-top:18px; padding:11px 13px; border-radius:9px; font-size:11.5px; line-height:1.55; display:none; }
+  .msg.error { background:rgba(228,87,76,.13); border:1px solid rgba(228,87,76,.42); color:#ffb4ad; }
+  .msg.info { background:rgba(143,184,232,.1); border:1px solid var(--card-border); color:#c9dcf2; }
+  .msg a { color:var(--accent-300); font-weight:600; }
+
+  /* ---- footer ---- */
+  .foot { display:flex; justify-content:space-between; align-items:center; gap:18px; flex-wrap:wrap;
+    font-size:11.5px; color:var(--dim); border-top:1px solid rgba(143,184,232,.14); padding-top:16px; }
+  .foot nav { display:flex; gap:14px; align-items:center; }
+  .foot a { color:var(--dim); text-decoration:none; }
+  .foot a:hover { color:var(--accent-300); }
+  .foot .sep { opacity:.4; }
+
+  @media (max-width:1080px) {
+    .grid { grid-template-columns:minmax(0,1fr); gap:38px; }
+    .features { grid-template-columns:repeat(3,minmax(0,1fr)); max-width:none; }
+  }
+  @media (max-width:720px) {
+    .features { grid-template-columns:minmax(0,1fr); gap:22px; }
+    .lede { margin-bottom:28px; }
+  }
+</style>
+</head>
+<body>
+<div class="hero"></div>
+
+<div class="page">
+  <div class="wordmark">MERIDIAN GROUP</div>
+
+  <div class="grid">
+    <!-- ---------- left: proposition ---------- -->
+    <div>
+      <div class="eyebrow">MERIDIAN NEXUS</div>
+      <h1 class="lockup">Nexus <span>Capture</span></h1>
+      <div class="rule"></div>
+      <p class="tagline">Capturing &amp; Display Compliance</p>
+      <p class="lede">One view of every campaign in field &mdash; did we get to the store, and was the display executed to standard &mdash; across every client, banner, region and store.</p>
+
+      <div class="features">
+        <div class="feature">
+          <svg class="hex" viewBox="0 0 60 60" fill="none" stroke="#ec6d25" stroke-width="1.6" aria-hidden="true">
+            <path d="M30 4 52 17v26L30 56 8 43V17z" stroke-linejoin="round"/>
+            <path d="M18 30s5-7 12-7 12 7 12 7-5 7-12 7-12-7-12-7Z" stroke-linejoin="round"/>
+            <circle cx="30" cy="30" r="3.4" fill="#ec6d25" stroke="none"/>
+          </svg>
+          <h3>Capturing compliance</h3>
+          <p>Coverage of every targeted store, measured against elapsed cycle time, so shortfalls surface while they can still be recovered.</p>
+        </div>
+
+        <div class="feature">
+          <svg class="hex" viewBox="0 0 60 60" fill="none" stroke="#ec6d25" stroke-width="1.6" aria-hidden="true">
+            <path d="M30 4 52 17v26L30 56 8 43V17z" stroke-linejoin="round"/>
+            <path d="M30 42s9-8.4 9-15a9 9 0 1 0-18 0c0 6.6 9 15 9 15Z" stroke-linejoin="round"/>
+            <circle cx="30" cy="26.5" r="3.2" fill="#ec6d25" stroke="none"/>
+          </svg>
+          <h3>Display compliance</h3>
+          <p>Execution standards at every store visited, so a strong visit rate never masks weak performance on shelf.</p>
+        </div>
+
+        <div class="feature">
+          <svg class="hex" viewBox="0 0 60 60" fill="none" stroke="#ec6d25" stroke-width="1.6" aria-hidden="true">
+            <path d="M30 4 52 17v26L30 56 8 43V17z" stroke-linejoin="round"/>
+            <path d="M21 38V29M27 38V23M33 38V26M39 38V20" stroke-linecap="round" stroke-width="2.6"/>
+          </svg>
+          <h3>Regional &amp; rep accountability</h3>
+          <p>Compliance by region, banner, supervisor and rep, with photo evidence at store level.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------- right: sign in ---------- -->
+    <div class="card">
+      <img class="card-mark" src="assets/meridian-mark.png" alt="Meridian">
+      <h2>Nexus Capture</h2>
+      <div class="sub">Sign in to continue</div>
+      <div class="divider"></div>
+
+      <button class="ms-btn" id="signin">
+        <svg viewBox="0 0 23 23" aria-hidden="true"><path fill="#f25022" d="M1 1h10v10H1z"/><path fill="#7fba00" d="M12 1h10v10H12z"/><path fill="#00a4ef" d="M1 12h10v10H1z"/><path fill="#ffb900" d="M12 12h10v10H12z"/></svg>
+        Sign in with Microsoft
+      </button>
+
+      <div class="msg error" id="err"></div>
+      <div class="msg info" id="dev"></div>
+
+      <div class="foot-note">Access is limited to Meridian Group accounts.</div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div>&copy; 2026 Meridian Group. All rights reserved.</div>
+    <nav>
+      <a href="#">Privacy Policy</a><span class="sep">|</span>
+      <a href="#">Terms of Use</a><span class="sep">|</span>
+      <a href="#">Support</a>
+    </nav>
+  </div>
+</div>
+
+<script>
+  const btn = document.getElementById('signin');
+  const err = document.getElementById('err');
+  const dev = document.getElementById('dev');
+
+  function fail(msg) { err.textContent = msg; err.style.display = 'block'; btn.disabled = false; }
+
+  (async function () {
+    // Local dev bypasses auth entirely, as the Call Cycle portal does. Say so
+    // plainly rather than implying a sign-in took place.
+    if (isLocalDev()) {
+      dev.innerHTML = 'Running locally &mdash; authentication is bypassed on <b>'
+        + (location.hostname || 'file://') + '</b>. <a href="index.html">Continue to the dashboard &rarr;</a>';
+      dev.style.display = 'block';
+      btn.innerHTML = 'Continue to dashboard';
+      btn.onclick = function () { location.href = 'index.html'; };
+      return;
+    }
+
+    try {
+      const inst = getMsalInstance();
+      const res = await inst.handleRedirectPromise();
+      if (res || inst.getAllAccounts().length) { location.replace('index.html'); return; }
+    } catch (e) {
+      fail('Sign-in could not be completed: ' + e.message);
+    }
+
+    btn.onclick = async function () {
+      btn.disabled = true;
+      err.style.display = 'none';
+      try { await signIn(); }
+      catch (e) { fail('Sign-in failed: ' + e.message); }
+    };
+  })();
+</script>
+</body>
+</html>

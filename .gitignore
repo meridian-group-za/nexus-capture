@@ -1,0 +1,15 @@
+# Data is NEVER committed. It contains named reps, supervisors and store-level
+# results (145 reps, 99 supervisors, 8,506 stores, 40 clients), and the whole
+# point of the SharePoint/Graph path in auth.js is that the payload is fetched
+# with the signed-in user's token rather than shipped alongside the page.
+compliance_data.json
+compliance_data.json.gz
+questions/
+
+# Local extractor working files and backups
+*.bak
+*.bak[0-9]
+*.bak-*
+extract_compliance_data.py.bak*
+index.html.bak*
+__pycache__/
