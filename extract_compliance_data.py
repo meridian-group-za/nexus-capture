@@ -127,6 +127,43 @@ def normkey(name):
     return re.sub(r"[^a-z0-9]", "", name.lower())
 
 
+def yes_no_slots(question_rows, yes_no_q):
+    """Yes/No checks a fully-completed store should answer -- the per-store
+    denominator. Prefers the Question Summary (authoritative, and excludes
+    questions that never ran), falls back to the period line's count, then to 1
+    for the single-question reports that have no Question Summary sheet."""
+    scored = 0
+    for q in (question_rows or []):
+        y, n = q.get("yes"), q.get("no")
+        try:
+            if y is not None and n is not None and (float(y) + float(n)) > 0:
+                scored += 1
+        except (TypeError, ValueError):
+            continue
+    if scored:
+        return scored
+    if yes_no_q:
+        return int(yes_no_q)
+    return 1
+
+
+def store_compliance(row, ci_compliance, ci_answer):
+    """Per-store compliance. Multi-question reports carry a rate in "Store
+    Compliance"; single-question reports carry the answer instead, which is a
+    rate of 1 or 0. Anything else (not captured, refused, blank) stays None so
+    it is excluded from averages rather than counted as a zero."""
+    if ci_compliance is not None:
+        return row[ci_compliance]
+    if ci_answer is None:
+        return None
+    val = str(row[ci_answer] or "").strip().lower()
+    if val == "yes":
+        return 1
+    if val == "no":
+        return 0
+    return None
+
+
 def extract_store_results(ws, banner_by_code=None, banner_by_name=None):
     start = None
     hdr = None
@@ -143,8 +180,20 @@ def extract_store_results(ws, banner_by_code=None, banner_by_name=None):
     ci_rep = idx.get("Assigned Rep")
     ci_captured = idx.get("Captured")
     ci_compliance = idx.get("Store Compliance")
-    ci_photo = idx.get("Photo Captured")
     ci_imgurl = idx.get("Image URL Source")
+    # Single-question reports have no "Store Compliance" column -- with one
+    # question there is no rate to average, so the per-store result is the
+    # answer itself ("Latest Answer"/"Status"), and "No Reason" records why a
+    # No happened. 14 of 117 reports are this shape.
+    # Raw per-store check counts. Compliance counts every unanswered check as a
+    # No, so the store's own rate (Yes / Answered) is not enough: a store that
+    # answered 2 of 8 checks with both Yes is 25% compliant, not 100%.
+    ci_yes_checks = idx.get("Yes Checks")
+    ci_answered_checks = idx.get("Answered Checks")
+    ci_answer = idx.get("Latest Answer")
+    if ci_answer is None:
+        ci_answer = idx.get("Status")
+    ci_noreason = idx.get("No Reason")
     ci_store = idx.get("Store Code")
     ci_storename = idx.get("Store Name")
     rows = []
@@ -166,7 +215,11 @@ def extract_store_results(ws, banner_by_code=None, banner_by_name=None):
             "manager": row[ci_manager] if ci_manager is not None else None,
             "rep": row[ci_rep] if ci_rep is not None else None,
             "captured": row[ci_captured] if ci_captured is not None else None,
-            "compliance": row[ci_compliance] if ci_compliance is not None else None,
+            "compliance": store_compliance(row, ci_compliance, ci_answer),
+            "yesChecks": row[ci_yes_checks] if ci_yes_checks is not None else None,
+            "answeredChecks": row[ci_answered_checks] if ci_answered_checks is not None else None,
+            "answer": row[ci_answer] if ci_answer is not None else None,
+            "noReason": row[ci_noreason] if ci_noreason is not None else None,
             "imageUrl": row[ci_imgurl] if ci_imgurl is not None else None,
         })
     return rows
@@ -206,6 +259,12 @@ def extract_question_summary(ws):
             "no": val("No"),
             "compliance": val("Yes/No Compliance"),
             "numericTarget": val("Numeric Target"),
+            # Numeric KPI questions have no Yes/No rate; their result is the
+            # mean answer across stores ("Average"), plus a target-met rate
+            # where the question defines a target.
+            "average": val("Average"),
+            "metTarget": val("Met Target"),
+            "targetCompliance": val("Target Compliance"),
         })
     return rows
 
@@ -245,6 +304,93 @@ def extract_question_results(ws):
             rec[key] = row[j] if j is not None else None
         rows.append(rec)
     return rows
+
+
+def group_slot_totals(question_rows, question_results, store_rows):
+    """Exact Yes-answer and check-slot totals per region and per banner.
+
+    Computed here rather than in the browser because the store-level answers are
+    ~870k rows across 117 forms: aggregating them client-side would mean
+    downloading every per-form file. The result is ~10 regions and ~60 banners
+    per form, which is negligible in the payload.
+
+    Slots are (targeted stores in the group) x (scored Yes/No questions), so a
+    store that was never visited still occupies its slots and counts as No --
+    the same rule as the form-level figure. Yes comes from the store-level
+    answers, which is the only source that carries region and banner.
+    """
+    # A check is anything a store can pass or fail: a Yes/No question, or a
+    # Numeric KPI question that carries a target. SOS forms are entirely the
+    # latter (18 KPI questions, no Yes/No), so counting only Yes/No left every
+    # region with zero slots and a blank percentage.
+    scored = set()
+    for q in (question_rows or []):
+        y, n = q.get("yes"), q.get("no")
+        try:
+            if y is not None and n is not None and (float(y) + float(n)) > 0:
+                scored.add(q.get("question"))
+                continue
+        except (TypeError, ValueError):
+            pass
+        tc, nt = q.get("targetCompliance"), q.get("numericTarget")
+        if (tc is not None and tc != "") or (nt is not None and nt != ""):
+            scored.add(q.get("question"))
+    n_scored = len(scored)
+
+    # Region/banner per store, and the targeted store counts per group.
+    region_of, banner_of = {}, {}
+    region_target, banner_target = {}, {}
+    region_captured, banner_captured = {}, {}
+    for r in store_rows or []:
+        code = r.get("store")
+        reg = r.get("region") or "Unassigned"
+        ban = r.get("banner") or "Unknown"
+        region_of[code] = reg
+        banner_of[code] = ban
+        region_target[reg] = region_target.get(reg, 0) + 1
+        banner_target[ban] = banner_target.get(ban, 0) + 1
+        if r.get("captured") == "Yes":
+            region_captured[reg] = region_captured.get(reg, 0) + 1
+            banner_captured[ban] = banner_captured.get(ban, 0) + 1
+
+    region_yes, banner_yes = {}, {}
+    if n_scored:
+        for row in question_results or []:
+            if row.get("question") not in scored:
+                continue
+            # Passing a check is either answering Yes or meeting the target.
+            if not (_truthy(row.get("isYes")) or _truthy(row.get("targetMet"))):
+                continue
+            code = row.get("store")
+            reg = region_of.get(code, row.get("region") or "Unassigned")
+            ban = banner_of.get(code, "Unknown")
+            region_yes[reg] = region_yes.get(reg, 0) + 1
+            banner_yes[ban] = banner_yes.get(ban, 0) + 1
+
+    def build(targets, captures, yeses):
+        out = {}
+        for key, target in targets.items():
+            out[key] = {
+                "target": target,
+                "captured": captures.get(key, 0),
+                "yes": yeses.get(key, 0),
+                "slots": target * n_scored,
+            }
+        return out
+
+    return build(region_target, region_captured, region_yes), \
+           build(banner_target, banner_captured, banner_yes)
+
+
+def _truthy(v):
+    """Excel exports Is Yes as TRUE/True/1/"Yes" depending on the writer."""
+    if v is None:
+        return False
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return v == 1
+    return str(v).strip().lower() in ("true", "yes", "1", "y")
 
 
 def slug(name):
@@ -309,7 +455,8 @@ def main():
                 "name": blueprint_name, "client": guess_client(blueprint_name),
                 "status": "pending", "kind": None, "mixed": False, "complianceLabel": None,
                 "target": None, "captured": None, "coverage": None, "compliance": None,
-                "notCaptured": None, "yesNoQ": None, "kpiQ": None, "photoQ": None,
+                "notCaptured": None, "yesNoQ": None, "kpiQ": None, "photoQ": None, "yesNoSlots": None,
+                "regionTotals": {}, "bannerTotals": {},
                 "periodStart": None, "periodEnd": None,
                 "modifiedAt": None, "storeRows": [], "questionRows": [],
                 "questionFile": None, "questionResultCount": 0,
@@ -326,10 +473,11 @@ def main():
             label = ws["J5"].value
             kind, mixed, yes_no_q, kpi_q, photo_q = classify(period_line, label)
             period_start, period_end = parse_period(period_line)
+            question_rows = extract_question_summary(wb["Question Summary"]) if "Question Summary" in wb.sheetnames else []
             store_rows = extract_store_results(wb["Store Results"], banner_by_code, banner_by_name) if "Store Results" in wb.sheetnames else []
             not_captured_rows = extract_not_captured(wb["Not Captured"]) if "Not Captured" in wb.sheetnames else []
-            question_rows = extract_question_summary(wb["Question Summary"]) if "Question Summary" in wb.sheetnames else []
             question_results = extract_question_results(wb["Question Results"]) if "Question Results" in wb.sheetnames else []
+            region_totals, banner_totals = group_slot_totals(question_rows, question_results, store_rows)
 
             results.append({
                 "name": blueprint_name, "client": guess_client(blueprint_name),
@@ -337,6 +485,8 @@ def main():
                 "target": ws["A6"].value, "captured": ws["D6"].value, "coverage": ws["G6"].value,
                 "compliance": ws["J6"].value, "notCaptured": ws["G10"].value,
                 "yesNoQ": yes_no_q, "kpiQ": kpi_q, "photoQ": photo_q,
+                "yesNoSlots": yes_no_slots(question_rows, yes_no_q),
+                "regionTotals": region_totals, "bannerTotals": banner_totals,
                 "periodStart": period_start, "periodEnd": period_end,
                 "modifiedAt": datetime.fromtimestamp(os.path.getmtime(report_path)).isoformat(timespec="seconds"),
                 "storeRows": store_rows,
@@ -351,7 +501,8 @@ def main():
                 "name": blueprint_name, "client": guess_client(blueprint_name),
                 "status": "locked", "kind": None, "mixed": False, "complianceLabel": None,
                 "target": None, "captured": None, "coverage": None, "compliance": None,
-                "notCaptured": None, "yesNoQ": None, "kpiQ": None, "photoQ": None,
+                "notCaptured": None, "yesNoQ": None, "kpiQ": None, "photoQ": None, "yesNoSlots": None,
+                "regionTotals": {}, "bannerTotals": {},
                 "periodStart": None, "periodEnd": None,
                 "modifiedAt": None, "storeRows": [], "questionRows": [],
                 "questionFile": None, "questionResultCount": 0,

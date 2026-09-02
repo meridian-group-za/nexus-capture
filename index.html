@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
-<script src="./auth.js"></script>
+<script src="./auth.js?v=3"></script>
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
@@ -59,7 +59,7 @@
     border-radius:999px; padding:3px 11px; font-size:10px; font-family:inherit; cursor:pointer; margin-bottom:10px; }
   .signout:hover { border-color:var(--color-accent-700); color:var(--color-accent-300); }
 
-  .main { flex:1; min-width:0; padding:18px clamp(16px,2vw,26px) 32px; }
+  .main { flex:1; min-width:0; padding:18px clamp(16px,2vw,26px) 32px; overflow:visible; }
   .main-inner { max-width:1700px; }
   .page-head { display:flex; align-items:flex-end; gap:24px; flex-wrap:wrap; margin-bottom:10px; }
   .page-head h1 { margin:0 0 2px; font-size:21px; font-family:var(--font-heading); font-weight:700; color:var(--color-neutral-100); }
@@ -69,7 +69,11 @@
   .head-stat-value { font-family:var(--font-heading); font-size:22px; line-height:1.1; color:var(--color-neutral-100); }
   .divider { height:1px; background:linear-gradient(90deg,transparent,var(--color-neutral-800) 48px,var(--color-neutral-800) calc(100% - 48px),transparent); margin-bottom:14px; }
 
-  .filters { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+  .filters { display:flex; gap:6px; flex-wrap:wrap; align-items:center;
+    position:sticky; top:0; z-index:30; background:var(--color-bg);
+    margin-inline:calc(-1 * clamp(16px,2vw,26px)); padding:10px clamp(16px,2vw,26px);
+    margin-bottom:14px; border-bottom:1px solid var(--color-neutral-800);
+    box-shadow:0 6px 16px -8px rgba(0,0,0,.75); }
   .filters select { background:#0a1c3a; border:1px solid var(--color-neutral-800); color:var(--color-text); border-radius:var(--radius-md);
     padding:6px 8px; font-size:11.5px; font-family:inherit; flex:none; }
   .filters select option { background:#0f2c4f; color:#e9e9ed; }
@@ -77,14 +81,14 @@
     padding:6px 12px; font-size:11px; font-family:inherit; cursor:pointer; flex:none; white-space:nowrap; }
   .reset-btn:hover { border-color:var(--color-accent-700); color:var(--color-accent-300); }
 
-  .content { display:flex; flex-direction:column; gap:12px; }
+  .content { display:flex; flex-direction:column; gap:12px; min-width:0; }
   /* Two panels sharing a row. auto-fit rather than a fixed breakpoint: it goes
      two-up whenever ~320px per column is available, so display scaling and
      window size sort themselves out without a magic media-query number. */
   .panel-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px; align-items:start; }
   /* Bar rows inside a half-width panel need a narrower label gutter. */
   .panel-row .ranked-row { gap:8px; }
-  .panel-row .ranked-row .name { width:104px; }
+  .panel-row .ranked-row .name { width:132px; }
   .panel-row .ranked-row .value { width:46px; }
   .kpi-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:12px; }
   .kpi-card { border-radius:var(--radius-md); background:var(--color-surface); border:1px solid var(--color-neutral-800);
@@ -95,20 +99,29 @@
   .kpi-value { font-size:21px; font-weight:700; line-height:1; color:var(--color-neutral-100); }
   .kpi-sub { font-size:10px; line-height:1.35; color:var(--color-neutral-500); }
 
-  .panel { border-radius:var(--radius-lg); background:var(--color-surface); border:1px solid var(--color-neutral-800); }
+  .panel { border-radius:var(--radius-lg); background:var(--color-surface); border:1px solid var(--color-neutral-800); min-width:0; }
   .panel-head { padding:11px 15px 2px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
   .panel-title { font-size:12px; font-weight:600; color:var(--color-neutral-100); text-transform:uppercase; letter-spacing:.07em; }
   .panel-sub { font-size:11px; margin-top:3px; color:var(--color-neutral-500); }
   .panel-body { padding:8px 15px 13px; }
   .search-input { height:32px; padding:0 12px; font-size:12px; border-radius:var(--radius-md); background:#0a1c3a; border:1px solid var(--color-neutral-800); color:var(--color-text); font-family:inherit; outline:none; width:220px; }
   .search-input:focus { border-color:var(--color-accent-700); }
+  .form-picker { background:#0a1c3a; border:1px solid var(--color-neutral-800); color:var(--color-text);
+    border-radius:var(--radius-md); padding:7px 10px; font-size:12px; font-family:inherit; max-width:460px; }
+  .form-picker option { background:#0f2c4f; }
+  .q-name { width:auto !important; flex:1 1 340px; min-width:180px; }
   .form-filter { display:flex; align-items:center; gap:6px; }
   .form-filter .search-input { width:300px; height:28px; font-size:11.5px; }
+  .scope-bar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .scope-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.1em; color:var(--color-neutral-400); }
+  .scope-note { font-size:11px; color:var(--color-neutral-500); margin-left:2px; }
   .filter-pill { border-radius:999px; padding:4px 11px; font-size:11px; font-family:inherit; cursor:pointer;
     background:transparent; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400); white-space:nowrap; }
   .filter-pill b { font-weight:700; }
   .filter-pill.good:hover { border-color:var(--nx-good); color:var(--nx-good); }
   .filter-pill.crit:hover { border-color:var(--nx-crit); color:var(--nx-crit); }
+  .filter-pill.neutral:hover { border-color:var(--color-neutral-400); color:var(--color-neutral-200); }
+  .filter-pill.active.neutral { background:rgba(157,196,236,.14); border-color:var(--color-neutral-400); color:var(--color-neutral-200); }
   .filter-pill.active.good { background:rgba(34,197,94,.16); border-color:var(--nx-good); color:var(--nx-good); }
   .filter-pill.active.crit { background:rgba(228,87,76,.16); border-color:var(--nx-crit); color:var(--nx-crit); }
   .chip-clear { background:color-mix(in srgb, var(--color-accent) 14%, transparent); border:1px solid var(--color-accent-700);
@@ -119,14 +132,20 @@
   .focus-item .dot { width:8px; height:8px; border-radius:50%; background:var(--nx-crit); flex-shrink:0; }
   .focus-item b { color:var(--color-neutral-100); font-weight:700; }
   .focus-item .pct { margin-left:auto; font-weight:700; color:var(--nx-crit); flex-shrink:0; }
+  .focus-item.warn { background:color-mix(in srgb, var(--nx-warn) 9%, transparent); border-color:color-mix(in srgb, var(--nx-warn) 30%, transparent); }
+  .focus-item.warn .dot { background:var(--nx-warn); }
+  .focus-item.warn .pct { color:var(--nx-warn); }
   .empty-state { padding:14px; text-align:center; font-size:12px; color:var(--color-neutral-500); }
 
-  .ranked-row { display:flex; align-items:center; gap:10px; padding:3px 0; }
+  .ranked-row { display:flex; align-items:center; gap:10px; padding:3px 0; min-height:22px; }
   .ranked-row .rank { width:18px; font-size:10px; font-weight:700; text-align:center; color:var(--color-neutral-500); flex-shrink:0; }
-  .ranked-row .name { width:150px; flex-shrink:0; font-size:12px; color:var(--color-neutral-100); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .ranked-row .track { flex:1; min-width:40px; background:var(--color-accent-900); border-radius:4px; height:10px; overflow:hidden; }
+  .ranked-row .name { width:210px; flex-shrink:0; font-size:12px; color:var(--color-neutral-100); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ranked-row .track { flex:1; min-width:120px; background:var(--color-accent-900); border-radius:4px; height:10px; overflow:hidden; }
   .ranked-row .fill { height:100%; border-radius:4px; }
   .ranked-row .value { width:52px; text-align:right; font-size:12px; font-weight:700; flex-shrink:0; }
+  .bar-meta { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* Half-width panels: the meta column has to be narrower or it wraps. */
+  .panel-row .bar-meta { width:78px !important; font-size:10px; }
   /* Clickable bar labels. Underline on hover so it reads as a control without
      adding chrome to every row. */
   .name-btn { background:none; border:none; padding:0; margin:0; font:inherit; font-size:12px; text-align:left;
@@ -134,16 +153,38 @@
   .name-btn:hover { color:var(--color-accent-300); text-decoration:underline; }
   .name-btn.active { color:var(--color-accent); font-weight:700; }
   .name-btn.active::after { content:' \00d7'; font-weight:700; }
+  /* Store Answers has 9 columns; at the default sizing the Image column fell
+     off the right edge. Tightened here only. */
+  /* All Forms has to fit without horizontal scroll. */
+  #forms-table table { font-size:10px; }
+  #forms-table th { padding:5px 6px; font-size:8.5px; }
+  #forms-table td { padding:2px 6px; }
+  #forms-table .pill { padding:0 5px; font-size:9px; }
+  #forms-table .name-cell { max-width:290px; }
+  #forms-table .mini-track { width:36px; }
+  .drill table { font-size:10px; }
+  .drill th { padding:5px 6px; font-size:8.5px; }
+  .drill td { padding:2px 6px; }
+  .drill .pill { padding:0 5px; font-size:9px; }
+  .drill .q-col { max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--color-neutral-300); }
+  .drill .name-cell { max-width:190px; }
+  .drill .issue-cell { max-width:170px; }
   .drill { border-color:var(--color-accent-700); box-shadow:0 0 0 1px color-mix(in srgb, var(--color-accent) 22%, transparent); }
+  /* A question with no percentage scale gets an inert track, so rows still
+     line up without implying a value of zero. */
+  .track.no-scale { background:repeating-linear-gradient(90deg, var(--color-accent-900) 0 6px, transparent 6px 12px); opacity:.5; }
   .row-active { background:color-mix(in srgb, var(--color-accent) 8%, transparent); border-radius:6px; }
   @media (max-width:820px) { .bar-meta { display:none; } }
 
   table { width:100%; border-collapse:collapse; font-size:11px; }
   thead tr { background:var(--color-accent-900); }
+  .table-wrap { position:relative; z-index:1; }
   th { text-align:left; padding:6px 8px; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--color-neutral-400); white-space:nowrap; }
   th.num, td.num { text-align:right; }
   td { padding:4px 8px; border-top:1px solid var(--color-neutral-800); color:var(--color-text); white-space:nowrap; }
   tbody tr:hover { background:color-mix(in srgb, var(--color-accent) 7%, transparent); }
+  .answer-cell { max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .issue-cell { max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--nx-warn); }
   .q-cell { max-width:520px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--color-neutral-100); }
   .name-cell { color:var(--color-neutral-100); font-weight:500; max-width:420px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .pill { display:inline-flex; align-items:center; gap:4px; padding:1px 7px; border-radius:999px; font-size:10px; font-weight:700; white-space:nowrap; }
@@ -174,7 +215,6 @@ const ICONS = {
   clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M8.5 10h7M8.5 14h7M8.5 18h4"/>',
   tag:       '<path d="M20.6 12.4 12.4 20.6a2 2 0 0 1-2.8 0l-6.2-6.2a2 2 0 0 1 0-2.8L11.6 3.4a2 2 0 0 1 1.4-.6h5.6a2 2 0 0 1 2 2V11a2 2 0 0 1-.6 1.4Z"/><circle cx="16.5" cy="7.5" r="1.4"/>',
   help:      '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4"/><circle cx="12" cy="16.8" r=".9" fill="currentColor" stroke="none"/>',
-  camera:    '<path d="M4 8h3l1.2-2h7.6L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13.5" r="3.2"/>',
 };
 function navIcon(name) {
   return '<svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" '
@@ -182,16 +222,15 @@ function navIcon(name) {
 }
 
 const NAV_ITEMS = [
-  { id: 'overview',    label: 'Compliance Overview', icon: 'gauge' },
+  { id: 'overview',    label: 'Overview',             icon: 'gauge' },
   { id: 'campaigns',   label: 'All Forms',            icon: 'clipboard' },
   { id: 'pricing',     label: 'Price Surveys',        icon: 'tag' },
-  { id: 'questions',   label: 'Form Questions',       icon: 'help' },
-  { id: 'notcaptured', label: 'Store Level Detail',   icon: 'camera' },
+  { id: 'questions',   label: 'Form Analysis',        icon: 'help' },
 ];
 
 let DATA = null;
 let ACCOUNT = null;
-let state = { page: 'overview', client: 'ALL', region: 'ALL', manager: 'ALL', banner: 'ALL', captured: 'ALL', qType: 'ALL', qSearch: '', search: '', formQ: '', scope: 'open' };
+let state = { page: 'overview', client: 'ALL', region: 'ALL', manager: 'ALL', banner: 'ALL', captured: 'ALL', formStatus: 'ALL', answerFilter: 'ALL', priceAnswered: 'ALL', showContextQs: false, focusExpanded: false, qForm: null, qType: 'ALL', qSearch: '', search: '', formQ: '', scope: 'open' };
 
 function pct(v) { return v === null || v === undefined ? null : v * 100; }
 function fmtPct(v, digits) { return v === null || v === undefined ? '—' : v.toFixed(digits === undefined ? 1 : digits) + '%'; }
@@ -236,6 +275,108 @@ function pacingGap(c) {
 
 function isOpen(c) { return timing(c).open; }
 
+// Region / manager / banner narrow the set of STORES, not the set of forms.
+// The precomputed region and question totals are whole-form aggregates, so
+// while one of these is active every compliance figure has to be recomputed
+// from the filtered store rows instead -- otherwise the numbers ignore the
+// filter entirely (store rows dropped 66,106 -> 7,904 for one manager while
+// every percentage stayed identical).
+function storeFilterActive() {
+  return state.region !== 'ALL' || state.manager !== 'ALL' || state.banner !== 'ALL';
+}
+
+// --- Display compliance ----------------------------------------------------
+// Scored over every targeted store: a store that was never visited has not
+// complied, so it counts against the result. Averaging over answered stores
+// only lets one store answering yes read as 100% on a 3,000-store form.
+// The reports themselves use the answered-only basis, so where a comparison
+// matters both are shown -- reportCompliance() is that figure.
+// Every Yes/No check on every targeted store is a slot. A Yes fills it;
+// anything else -- a No, a question the rep skipped, a store never visited --
+// leaves it empty and counts against compliance.
+//
+// This is deliberately NOT the average of each store's own rate: that ignores
+// checks a store left blank, so a store answering 2 of 8 checks with both Yes
+// scored 100% instead of 25%. On a third of forms the two differ by 15-50
+// points (Soill Checkers ROS read 75.9% that way, 25.3% this way).
+function complianceSlots(rows, slotsPerStore) {
+  const slots = (rows || []).length * (slotsPerStore || 0);
+  if (!slots) return null;
+  let yes = 0;
+  for (const r of rows) {
+    // rate x answered checks, not the "Yes Checks" column: that column covers a
+    // narrower set of checks on ~11 forms (Highveld August sums to 600 against
+    // 2,588 actual Yes answers), which understated everything badly.
+    if (r.compliance === null || r.compliance === undefined) continue;
+    const ac = Number(r.answeredChecks);
+    yes += (isFinite(ac) && ac > 0) ? r.compliance * ac : (r.compliance === 1 ? 1 : 0);
+  }
+  return yes / slots;
+}
+
+function slotsFor(c) {
+  return c && c.yesNoSlots ? Number(c.yesNoSlots) : 1;
+}
+
+// Kept for groupings that span forms: accumulates yes-checks and slots per
+// form so each form contributes its own denominator.
+function complianceOverTargeted(rows, slotsPerStore) {
+  return complianceSlots(rows, slotsPerStore);
+}
+
+function answeredCount(rows) {
+  return (rows || []).filter(r => r.compliance !== null && r.compliance !== undefined).length;
+}
+
+// Compliance of a form on the targeted basis, from its own store rows.
+// Yes answers over every check slot: (targeted stores x Yes/No questions).
+// Taken from Question Summary, which is the only place the per-question Yes
+// totals are authoritative -- the Store Results per-store columns cover a
+// narrower set of checks on ~11 forms (Highveld August: 600 vs 2,588 yes), so
+// reconstructing from store rows understates those badly.
+function questionSlotTotals(c) {
+  let yes = 0, slots = 0;
+  for (const q of c.questionRows || []) {
+    const y = Number(q.yes), n = Number(q.no), t = Number(q.target);
+    if (!isFinite(y) || !isFinite(n) || (y + n) <= 0) continue;   // not a scored Yes/No check
+    yes += y;
+    slots += isFinite(t) && t > 0 ? t : (y + n);
+  }
+  return { yes: yes, slots: slots };
+}
+
+function formCompliance(c) {
+  if (c.kind === 'price') return null;
+  if (storeFilterActive()) return complianceSlots(c.storeRows || [], slotsFor(c));
+  const q = questionSlotTotals(c);
+  if (q.slots) return q.yes / q.slots;
+  // Single-question reports have no Question Summary sheet; their per-store
+  // answer is the whole result, so the store rows are exact.
+  return complianceSlots(c.storeRows || [], slotsFor(c));
+}
+
+// Across a set of forms, pooling every store row rather than averaging the
+// per-form percentages -- a 23-store form should not weigh the same as a
+// 5,000-store one.
+function poolCompliance(list) {
+  let yes = 0, slots = 0;
+  for (const c of list || []) {
+    if (c.kind === 'price') continue;
+    const q = storeFilterActive() ? { slots: 0 } : questionSlotTotals(c);
+    if (q.slots) { yes += q.yes; slots += q.slots; continue; }
+    // Same estimator as complianceSlots -- counting only compliance === 1 threw
+    // away every partially-compliant store and read ~1.6% instead of ~24%.
+    const rows = c.storeRows || [], per = slotsFor(c);
+    slots += rows.length * per;
+    for (const r of rows) {
+      if (r.compliance === null || r.compliance === undefined) continue;
+      const ac = Number(r.answeredChecks);
+      yes += (isFinite(ac) && ac > 0) ? r.compliance * ac : (r.compliance === 1 ? 1 : 0);
+    }
+  }
+  return slots ? yes / slots : null;
+}
+
 // --- Banner ----------------------------------------------------------------
 // Banner comes from the Call Cycle Master, joined in by
 // extract_compliance_data.py on the GeoRep store code (MER####). ~99% of store
@@ -245,23 +386,79 @@ function bannerOf(row) { return row.banner || 'Unknown'; }
 // Roll store rows up by an arbitrary key, returning coverage (capture rate) and
 // average store compliance side by side -- the two are different questions and
 // a group can be strong on one and weak on the other.
+// Region and banner breakdowns use exact per-group Yes and check-slot totals
+// that extract_compliance_data.py precomputes from the store-level answers.
+// Deriving them in the browser would mean downloading all 117 per-form answer
+// files (~870k rows); the precomputed totals are ~10 regions and ~60 banners
+// per form. Falls back to store rows for any form without them.
+function rollupGroups(campaignList, which) {
+  const acc = new Map();
+  let exact = 0, approx = 0;
+  const bump = (key, t) => {
+    let a = acc.get(key);
+    if (!a) { a = { key: key, target: 0, captured: 0, yes: 0, slots: 0 }; acc.set(key, a); }
+    a.target += t.target || 0; a.captured += t.captured || 0;
+    a.yes += t.yes || 0; a.slots += t.slots || 0;
+    return a;
+  };
+  for (const c of campaignList) {
+    if (c.kind === 'price') continue;
+    const totals = which === 'region' ? c.regionTotals : c.bannerTotals;
+    if (!storeFilterActive() && totals && Object.keys(totals).length) {
+      exact++;
+      for (const [key, t] of Object.entries(totals)) bump(key, t);
+      continue;
+    }
+    approx++;
+    const per = slotsFor(c);
+    for (const r of c.storeRows || []) {
+      const key = (which === 'region' ? r.region : r.banner) || (which === 'region' ? 'Unassigned' : 'Unknown');
+      const ac = Number(r.answeredChecks);
+      const yes = (r.compliance === null || r.compliance === undefined) ? 0
+        : ((isFinite(ac) && ac > 0) ? r.compliance * ac : (r.compliance === 1 ? 1 : 0));
+      bump(key, { target: 1, captured: r.captured === 'Yes' ? 1 : 0, yes: yes, slots: per });
+    }
+  }
+  const list = [...acc.values()].map(a => Object.assign(a, {
+    coverage: a.target ? a.captured / a.target : null,
+    compliance: a.slots ? a.yes / a.slots : null,
+  }));
+  list.exactForms = exact; list.approxForms = approx;
+  return list;
+}
+
 function rollup(campaignList, keyFn) {
   const acc = new Map();
   for (const c of campaignList) {
+    const per = slotsFor(c);
     for (const r of c.storeRows || []) {
       const k = keyFn(r);
       if (!k) continue;
       let a = acc.get(k);
-      if (!a) { a = { key:k, target:0, captured:0, compSum:0, compN:0 }; acc.set(k, a); }
+      if (!a) { a = { key:k, target:0, captured:0, yesChecks:0, slots:0, compN:0 }; acc.set(k, a); }
       a.target++;
       if (r.captured === 'Yes') a.captured++;
-      if (r.compliance !== null && r.compliance !== undefined) { a.compSum += r.compliance; a.compN++; }
+      a.slots += per;
+      if (r.compliance !== null && r.compliance !== undefined) {
+        const ac = Number(r.answeredChecks);
+        a.yesChecks += (isFinite(ac) && ac > 0) ? r.compliance * ac : (r.compliance === 1 ? 1 : 0);
+        a.compN++;
+      }
     }
   }
   return [...acc.values()].map(a => Object.assign(a, {
     coverage: a.target ? a.captured / a.target : null,
-    compliance: a.compN ? a.compSum / a.compN : null,
+    // Yes-checks over every check slot in the group, matching formCompliance().
+    compliance: a.slots ? a.yesChecks / a.slots : null,
   }));
+}
+
+// Compact form for table cells, where "29 days left" is most of the column.
+function fmtDaysShort(n) {
+  if (n === null || n === undefined) return '';
+  if (n < 0) return 'closed';
+  if (n === 0) return 'today';
+  return n + 'd';
 }
 
 function fmtDaysLeft(n) {
@@ -313,8 +510,7 @@ function getFilteredCampaigns() {
         return c; // unfiltered at store level -- use the report's own authoritative numbers
       }
       const captured = rows.filter(r => r.captured === 'Yes').length;
-      const complianceVals = rows.filter(r => r.compliance !== null && r.compliance !== undefined).map(r => r.compliance);
-      const compliance = complianceVals.length ? complianceVals.reduce((a,b)=>a+b,0) / complianceVals.length : null;
+      const compliance = complianceSlots(rows, slotsFor(c));
       return Object.assign({}, c, {
         target: rows.length,
         captured: captured,
@@ -360,7 +556,7 @@ function renderFilters(opts) {
 }
 
 function setFilter(key, value) { state[key] = value; render(); }
-function resetFilters() { state.client='ALL'; state.region='ALL'; state.manager='ALL'; state.banner='ALL'; state.captured='ALL'; state.qType='ALL'; state.qSearch=''; state.search=''; state.formQ=''; render(); }
+function resetFilters() { state.client='ALL'; state.region='ALL'; state.manager='ALL'; state.banner='ALL'; state.captured='ALL'; state.formStatus='ALL'; state.answerFilter='ALL'; state.priceAnswered='ALL'; state.qForm=null; state.qType='ALL'; state.qSearch=''; state.search=''; state.formQ=''; render(); }
 function setFormQ(v) { state.formQ = v; render(); }
 
 // Clicking a bar label filters by it; clicking the active one clears it, so the
@@ -375,6 +571,10 @@ function setScope(v) { state.scope = v; render(); }
 
 function pageTitle() { return NAV_ITEMS.find(n => n.id === state.page).label; }
 
+function storeRowCount(list) {
+  return list.reduce((a, c) => a + ((c.storeRows || []).length), 0);
+}
+
 function renderOverview(campaigns) {
   const completeForms = campaigns.filter(c => c.status === 'complete');
   const pendingForms  = campaigns.filter(c => c.status === 'pending' || c.status === 'locked');
@@ -384,8 +584,13 @@ function renderOverview(campaigns) {
   // KPI row describes work in progress -- the P&G Overview framing. Falls back
   // to all completed forms if nothing is open, so the page is never blank
   // between cycles.
-  const kpiForms = openForms.length ? openForms : completeForms;
-  const kpiIsOpen = openForms.length > 0;
+  // The scope toggle governs everything on this page, KPI row included --
+  // "Open" was previously applied only to the breakdowns, which made the cards
+  // look unresponsive to a control sitting right next to them.
+  const kpiForms = state.scope === 'all'
+    ? completeForms
+    : (openForms.length ? openForms : completeForms);
+  const kpiIsOpen = state.scope !== 'all' && openForms.length > 0;
 
   const kTarget   = kpiForms.reduce((a,c) => a + (c.target||0), 0);
   const kCaptured = kpiForms.reduce((a,c) => a + (c.captured||0), 0);
@@ -393,7 +598,9 @@ function renderOverview(campaigns) {
   const visited   = kTarget ? kCaptured / kTarget : null;
 
   const kAudits = kpiForms.filter(c => c.kind !== 'price' && c.compliance !== null && c.compliance !== undefined);
-  const kCompliance = kAudits.length ? kAudits.reduce((a,c) => a + c.compliance, 0) / kAudits.length : null;
+  const kCompliance = poolCompliance(kpiForms);
+  const kAuditRows = kpiForms.filter(c => c.kind !== 'price').flatMap(c => c.storeRows || []);
+  const kAnswered = answeredCount(kAuditRows);
 
   const timed = kpiForms.map(timing).filter(t => t.known);
   const avgTimeGone = timed.length ? timed.reduce((a,t) => a + t.timeGone, 0) / timed.length : null;
@@ -404,13 +611,28 @@ function renderOverview(campaigns) {
     .sort((a,b) => b.gap - a.gap);
   // Same rule as the Behind Time Gone KPI, so the count matches this list.
   const focus = behind.filter(x => x.gap > 0);
+  // Nothing behind schedule is good news, but an empty panel says nothing --
+  // fall back to the weakest forms on display compliance so there is always a
+  // next thing to look at. focusBasis tells the reader which rule produced it.
+  let focusBasis = 'behind';
+  let focusList = focus;
+  if (!focusList.length) {
+    const weakest = cs => cs
+      .filter(c => formCompliance(c) !== null)
+      .sort((a, b) => formCompliance(a) - formCompliance(b))
+      .slice(0, 4)
+      .map(c => ({ c: c, gap: pacingGap(c), t: timing(c) }));
+    const openWeak = weakest(openForms);
+    if (openWeak.length) { focusList = openWeak; focusBasis = 'openCompliance'; }
+    else { focusList = weakest(closedForms); focusBasis = 'closedCompliance'; }
+  }
 
   // Breakdowns follow the scope toggle; default matches the KPI row.
-  const scopeForms = state.scope === 'all' ? completeForms : kpiForms;
+  const scopeForms = kpiForms;
   const cmp = k => (a,b) => (b[k] != null ? b[k] : -1) - (a[k] != null ? a[k] : -1);
-  const byRegion     = rollup(scopeForms, r => r.region).sort(cmp('coverage'));
+  const byRegion     = rollupGroups(scopeForms, 'region').sort(cmp('coverage'));
   const byRegionComp = [...byRegion].sort(cmp('compliance'));
-  const byBanner     = rollup(scopeForms, r => bannerOf(r))
+  const byBanner     = rollupGroups(scopeForms, 'banner')
     .filter(a => a.target >= 15).sort(cmp('compliance'));
 
   const kpi = (label, value, sub, color) => `
@@ -442,10 +664,12 @@ function renderOverview(campaigns) {
     : (kpiIsOpen ? `${openForms.length} open form(s)` : `all ${completeForms.length} completed forms (nothing open)`);
 
   const scopeToggle = `
-        <div style="display:flex;gap:6px;align-items:center;">
-          <button class="reset-btn" style="${state.scope === 'open' ? 'border-color:var(--color-accent);color:var(--color-accent);' : ''}" onclick="setScope('open')">Open</button>
-          <button class="reset-btn" style="${state.scope === 'all' ? 'border-color:var(--color-accent);color:var(--color-accent);' : ''}" onclick="setScope('all')">All</button>
-        </div>`;
+    <div class="scope-bar">
+      <span class="scope-label">Showing</span>
+      <button class="filter-pill ${state.scope === 'open' ? 'active good' : 'good'}" onclick="setScope('open')">In Progress <b>${openForms.length.toLocaleString()}</b></button>
+      <button class="filter-pill ${state.scope === 'all' ? 'active crit' : 'crit'}" onclick="setScope('all')">All Forms <b>${completeForms.length.toLocaleString()}</b></button>
+      <span class="scope-note">${kpiForms.length.toLocaleString()} form(s) &middot; ${storeRowCount(kpiForms).toLocaleString()} store rows in scope</span>
+    </div>`;
 
   // One panel per entry; assembled below so the two region panels are true
   // siblings inside .panel-row (they were previously nested, which stacked them).
@@ -454,7 +678,6 @@ function renderOverview(campaigns) {
         <div class="panel-head">
           <div><div class="panel-title">Capturing Compliance by Region</div>
           <div class="panel-sub">Targeted stores actually visited &middot; ${scopeNote}</div></div>
-          ${scopeToggle}
         </div>
         <div class="panel-body">${byRegion.length ? barList(byRegion, a => a.coverage, a => `${a.captured.toLocaleString()}/${a.target.toLocaleString()}`, 'region') : '<div class="empty-state">No store rows in scope.</div>'}</div>
       </div>`;
@@ -462,29 +685,42 @@ function renderOverview(campaigns) {
   const panelRegionComp = `
       <div class="panel">
         <div class="panel-head">
-          <div><div class="panel-title">Display Compliance by Region</div>
-          <div class="panel-sub">Avg store compliance, captured stores only &middot; ${scopeNote}</div></div>
+          <div><div class="panel-title">Compliance by Region</div>
+          <div class="panel-sub">Scored over all targeted stores &middot; ${scopeNote}</div></div>
         </div>
-        <div class="panel-body">${byRegionComp.length ? barList(byRegionComp, a => a.compliance, a => `${a.compN.toLocaleString()} scored`, 'region') : '<div class="empty-state">No store rows in scope.</div>'}</div>
+        <div class="panel-body">${byRegionComp.length ? barList(byRegionComp, a => a.compliance, a => `${Math.round(a.yes).toLocaleString()} of ${a.slots.toLocaleString()}`, 'region') : '<div class="empty-state">No store rows in scope.</div>'}</div>
       </div>`;
 
   return `
+    ${scopeToggle}
     <div class="kpi-grid">
-      ${kpi('Forms in Progress', kpiForms.length, kpiIsOpen ? 'In Progress' : 'no open forms &mdash; showing all completed', 'var(--color-accent)')}
+      ${kpi(kpiIsOpen ? 'Forms in Progress' : 'Forms', kpiForms.length, kpiIsOpen ? 'In Progress' : (state.scope === 'all' ? 'all completed forms' : 'no open forms &mdash; showing all completed'), 'var(--color-accent)')}
       ${kpi('% Stores Visited', fmtPct(pct(visited)), `${kCaptured.toLocaleString()} of ${kTarget.toLocaleString()} visited`, tierColor(pct(visited)))}
-      ${kpi('Compliance', fmtPct(pct(kCompliance)), kAudits.length === kpiForms.length ? `${kpiForms.length} form(s) in progress` : `${kAudits.length} of ${kpiForms.length} form(s) in progress have a scored metric`, tierColor(pct(kCompliance)))}
+      ${kpi('Display Compliance', fmtPct(pct(kCompliance)), `${kAnswered.toLocaleString()} of ${kAuditRows.length.toLocaleString()} targeted stores answered`, tierColor(pct(kCompliance)))}
       ${kpi('Time Gone', fmtPct(pct(avgTimeGone)), '', 'var(--color-neutral-400)')}
       ${kpi('Stores Not Visited', kNotCap.toLocaleString(), 'no submission received yet', 'var(--nx-crit)')}
       ${kpi('Behind Time Gone', behind.filter(x => x.gap > 0).length, 'forms behind time gone', 'var(--nx-warn)')}
     </div>
 
     <div class="panel"><div class="panel-body" style="padding:12px 15px;">
-      <div class="panel-title" style="margin-bottom:10px;">Where to Focus</div>
-      ${focus.length ? `<div class="focus-list">${focus.map(x => `
-        <div class="focus-item"><span class="dot"></span>
-          <span>${esc(x.c.name)} &mdash; <b>${fmtPct(pct(x.c.coverage),0)}</b> captured with <b>${fmtPct(x.t.timeGone*100,0)}</b> of the window gone &middot; ${fmtDaysLeft(x.t.daysLeft)}</span>
-          <span class="pct">+${Math.round(x.gap*100)}pts</span></div>
-      `).join('')}</div>` : '<div class="empty-state">No open form is behind its time gone.</div>'}
+      <div class="panel-title" style="margin-bottom:4px;">Where to Focus</div>
+      <div class="panel-sub" style="margin-bottom:10px;">${
+        focusBasis === 'behind' ? 'Open forms behind their time gone'
+        : focusBasis === 'openCompliance' ? 'Nothing is behind time gone &mdash; showing the weakest open forms on display compliance'
+        : 'No open forms &mdash; showing the weakest closed forms on display compliance'}</div>
+      ${focusList.length ? `<div class="focus-list">${(state.focusExpanded ? focusList : focusList.slice(0, 4)).map(x => `
+        <div class="focus-item ${focusBasis === 'behind' ? '' : 'warn'}"><span class="dot"></span>
+          ${focusBasis === 'behind'
+            ? `<span>${esc(x.c.name)} &mdash; <b>${fmtPct(pct(x.c.coverage),0)}</b> captured with <b>${fmtPct(x.t.timeGone*100,0)}</b> of the window gone &middot; ${fmtDaysLeft(x.t.daysLeft)}</span>
+               <span class="pct">+${Math.round(x.gap*100)}pts</span>`
+            : `<span>${esc(x.c.name)} &mdash; <b>${fmtPct(pct(formCompliance(x.c)),0)}</b> display compliance on <b>${fmtPct(pct(x.c.coverage),0)}</b> captured${x.t.known && x.t.open ? ' &middot; ' + fmtDaysLeft(x.t.daysLeft) : ''}</span>
+               <span class="pct">${fmtPct(pct(formCompliance(x.c)),0)}</span>`}
+        </div>
+      `).join('')}</div>
+      ${focusList.length > 4 ? `<div class="table-note" style="padding:8px 0 0;">
+        Showing ${state.focusExpanded ? focusList.length : 4} of ${focusList.length}.
+        <button class="reset-btn" style="padding:2px 9px;font-size:10px;margin-left:4px;" onclick="setFocusExpanded(${state.focusExpanded ? 'false' : 'true'})">${state.focusExpanded ? 'Show less' : 'Expand to see more'}</button>
+      </div>` : ''}` : '<div class="empty-state">No forms match the current filters.</div>'}
     </div></div>
 
     <div class="panel-row">${panelCapture}${panelRegionComp}</div>
@@ -500,7 +736,7 @@ function renderOverview(campaigns) {
           const col = x.gap > 0.10 ? 'var(--nx-crit)' : (x.gap > 0 ? 'var(--nx-warn)' : 'var(--nx-good)');
           return `
           <div class="ranked-row"><span class="rank">${i+1}</span>
-            <button class="name name-btn ${state.formQ === x.c.name ? 'active' : ''}" style="width:220px;" title="${state.formQ === x.c.name ? 'Clear this filter' : 'Filter by ' + esc(x.c.name)}" onclick="setFormQ(state.formQ === ${jsArg(x.c.name)} ? '' : ${jsArg(x.c.name)})">${esc(x.c.name)}</button>
+            <button class="name name-btn ${state.formQ === x.c.name ? 'active' : ''}" style="width:440px;" title="${state.formQ === x.c.name ? 'Clear this filter' : 'Filter by ' + esc(x.c.name)}" onclick="setFormQ(state.formQ === ${jsArg(x.c.name)} ? '' : ${jsArg(x.c.name)})">${esc(x.c.name)}</button>
             <div class="track" style="position:relative;">
               <div class="fill" style="width:${cov}%;background:${col};"></div>
               <div title="${fmtPct(clock,0)} of window elapsed" style="position:absolute;top:-2px;bottom:-2px;left:${clock}%;width:2px;background:var(--color-neutral-100);opacity:.85;"></div>
@@ -515,17 +751,19 @@ function renderOverview(campaigns) {
 
     <div class="panel">
       <div class="panel-head"><div>
-        <div class="panel-title">Display Compliance by Banner</div>
+        <div class="panel-title">Compliance by Banner</div>
       </div></div>
       <div class="panel-body">
-        ${byBanner.length ? barList(byBanner, a => a.compliance, a => `${a.compN.toLocaleString()} of ${a.target.toLocaleString()}`, 'banner') : '<div class="empty-state">No store rows in scope.</div>'}
+        ${byBanner.length ? barList(byBanner, a => a.compliance, a => `${Math.round(a.yes).toLocaleString()} of ${a.slots.toLocaleString()}`, 'banner') : '<div class="empty-state">No store rows in scope.</div>'}
       </div>
     </div>
   `;
 }
 
 function renderCampaignsTable(campaigns) {
+  const statusOf = c => (c.status === 'complete' ? (isOpen(c) ? 'open' : 'closed') : 'pending');
   const filtered = campaigns
+    .filter(c => state.formStatus === 'ALL' || statusOf(c) === state.formStatus)
     .filter(c => !state.search || c.name.toLowerCase().includes(state.search.toLowerCase()))
     // Worst first, mirroring the Power BI Priority Summary. Open campaigns lead,
     // ranked by pacing gap, because those are the ones still worth chasing.
@@ -533,57 +771,82 @@ function renderCampaignsTable(campaigns) {
       const ao = isOpen(a), bo = isOpen(b);
       if (ao !== bo) return ao ? -1 : 1;
       if (ao) return (pacingGap(b) ?? -Infinity) - (pacingGap(a) ?? -Infinity);
-      const av = a.compliance ?? Infinity, bv = b.compliance ?? Infinity;
+      const av = formCompliance(a) ?? Infinity, bv = formCompliance(b) ?? Infinity;
       return av - bv;
     });
   const rows = filtered.map(c => {
     let typeTag, metric;
     if (c.status === 'pending') {
       typeTag = '<span class="type-tag audit">Pending</span>';
-      metric = '<span class="pill na">Report not built yet</span>';
+      metric = '<span class="pill na" title="Blueprint exists but no compliance report has been built">Not built</span>';
     } else if (c.status === 'locked') {
       typeTag = '<span class="type-tag audit">Locked</span>';
-      metric = '<span class="pill na">File open &mdash; retry next refresh</span>';
+      metric = '<span class="pill na" title="Report file was open when the data was extracted; retry next refresh">Locked</span>';
     } else {
       typeTag = c.kind === 'sos' ? '<span class="type-tag sos">SOS / Facings</span>' : c.kind === 'price' ? '<span class="type-tag price">Price Survey</span>' : '<span class="type-tag audit">Compliance Audit</span>';
+      const tc = formCompliance(c);
+      const ans = answeredCount(c.storeRows);
+      const tot = (c.storeRows || []).length;
       metric = c.kind === 'price'
-        ? '<span class="pill na">N/A &mdash; see KPI results</span>'
-        : `<span class="mini-track"><span class="mini-fill" style="width:${pct(c.compliance)}%;background:${tierColor(pct(c.compliance))};"></span></span><span class="pill ${tierClass(pct(c.compliance))}">${fmtPct(pct(c.compliance))}${c.mixed?'*':''}</span>`;
+        ? '<span class="pill na" title="Price surveys have no Yes/No or target metric to score">N/A</span>'
+        : `<span class="mini-track" title="Scored over all ${tot.toLocaleString()} targeted stores; ${ans.toLocaleString()} answered. Report basis (answered only): ${fmtPct(pct(c.compliance))}"><span class="mini-fill" style="width:${pct(tc)}%;background:${tierColor(pct(tc))};"></span></span><span class="pill ${tierClass(pct(tc))}" title="Report basis (answered stores only): ${fmtPct(pct(c.compliance))}">${fmtPct(pct(tc))}${c.mixed?'*':''}</span>`;
     }
     const t = timing(c);
     const window = t.known
       ? `<span style="white-space:nowrap;">${c.periodStart.slice(5)} &rarr; ${c.periodEnd.slice(5)}</span>`
       : '<span style="color:var(--color-neutral-500);">—</span>';
     const gap = pacingGap(c);
-    const timeGoneCell = t.known
-      ? `<span class="mini-track"><span class="mini-fill" style="width:${t.timeGone*100}%;background:var(--color-neutral-400);"></span></span><span class="pill na">${fmtPct(t.timeGone*100,0)}</span>`
-      : '<span style="color:var(--color-neutral-500);">—</span>';
+    // Time gone folded into the status cell: the two always read together, and
+    // separately they cost a whole column each.
     const statusCell = !t.known
       ? '<span class="pill na">—</span>'
       : t.open
-        ? `<span class="pill ${gap > 0.10 ? 'crit' : gap > 0 ? 'warn' : 'good'}">${fmtDaysLeft(t.daysLeft)}${gap !== null && gap > 0 ? ` &middot; ${Math.round(gap*100)}pts behind` : ''}</span>`
+        ? `<span class="pill ${gap > 0.10 ? 'crit' : gap > 0 ? 'warn' : 'good'}" title="${fmtDaysLeft(t.daysLeft)}${gap !== null && gap > 0 ? ', ' + Math.round(gap*100) + ' points behind schedule' : ''}">${fmtDaysShort(t.daysLeft)}${gap !== null && gap > 0 ? ` &middot; +${Math.round(gap*100)}` : ''}</span>`
         : '<span class="pill na">Closed</span>';
+    const timeGone = t.known
+      ? `<span class="pill na" title="${fmtPct(t.timeGone*100,1)} of the survey window elapsed">${fmtPct(t.timeGone*100,0)}</span>`
+      : '<span style="color:var(--color-neutral-500);">—</span>';
+    // Captured and target in one cell -- they are only ever read as a ratio.
+    const storesCell = (c.captured === null || c.captured === undefined)
+      ? '—'
+      : `${Number(c.captured).toLocaleString()}<span style="color:#4a6b8a;"> / ${Number(c.target || 0).toLocaleString()}</span>`;
     return `<tr>
-      <td class="name-cell">${esc(c.name)}</td>
+      <td class="name-cell" title="${esc(c.name)}">${esc(c.name)}</td>
       <td>${window}</td>
-      <td>${timeGoneCell}</td>
+      <td>${timeGone}</td>
       <td>${statusCell}</td>
-      <td class="num">${c.target ?? '—'}</td>
-      <td class="num">${c.captured ?? '—'}</td>
+      <td class="num">${storesCell}</td>
       <td class="num">${fmtPct(pct(c.coverage))}</td>
       <td>${metric}</td>
-      <td class="num">${c.notCaptured ?? '—'}</td>
     </tr>`;
   }).join('');
   return `
     <div class="panel">
       <div class="panel-head">
-        <div><div class="panel-title">All Forms</div><div class="panel-sub">${filtered.length} form(s) &middot; open forms first, ranked by pacing gap; closed ranked by compliance</div></div>
-        <input class="search-input" placeholder="Search form…" value="${esc(state.search)}" oninput="setSearch(this.value)">
+        <div><div class="panel-title">All Forms</div></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          ${(() => {
+            // Counts ignore the status pill itself so each pill shows the size of
+            // what it would select, not of the current selection.
+            const pool = campaigns.filter(c => !state.search || c.name.toLowerCase().includes(state.search.toLowerCase()));
+            const n = k => pool.filter(c => statusOf(c) === k).length;
+            const pill = (val, label, count, tone) => `<button class="filter-pill ${state.formStatus === val ? 'active ' + tone : tone}" onclick="setFormStatus('${val}')">${label} <b>${count.toLocaleString()}</b></button>`;
+            return pill('open', 'In Progress', n('open'), 'good') + pill('closed', 'Completed', n('closed'), 'crit');
+          })()}
+          <input class="search-input" placeholder="Search form…" value="${esc(state.search)}" oninput="setSearch(this.value)">
+        </div>
       </div>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Form</th><th>Start &ndash; End Date</th><th>Time Gone</th><th>Status</th><th class="num">Target</th><th class="num">Captured</th><th class="num">Capturing Compliance</th><th>Compliance %</th><th class="num">Not Captured</th></tr></thead>
-        <tbody>${rows || '<tr><td colspan="9" class="empty-state">No forms match.</td></tr>'}</tbody>
+      <div class="table-wrap" id="forms-table"><table>
+        <thead><tr>
+          <th>Form</th>
+          <th title="Survey window">Window</th>
+          <th title="Share of the survey window elapsed">Time</th>
+          <th title="Days remaining, and points behind the clock">Status</th>
+          <th class="num" title="Stores captured of stores targeted">Captured</th>
+          <th class="num" title="Capturing compliance">Captured %</th>
+          <th title="Display compliance, scored over all targeted stores">Compliance</th>
+        </tr></thead>
+        <tbody>${rows || '<tr><td colspan="7" class="empty-state">No forms match.</td></tr>'}</tbody>
       </table></div>
     </div>
   `;
@@ -618,8 +881,10 @@ function renderPricing(campaigns) {
           : t.open
             ? `<span class="pill ${(pacingGap(c) ?? 0) > 0.10 ? 'crit' : (pacingGap(c) ?? 0) > 0 ? 'warn' : 'good'}">${fmtDaysLeft(t.daysLeft)}</span>`
             : '<span class="pill na">Closed</span>';
-    return `<tr>
-      <td class="name-cell">${esc(c.name)}</td>
+    const active = PRICE_DRILL && PRICE_DRILL.form === c.name;
+    return `<tr class="${active ? 'row-active' : ''}">
+      <td class="name-cell"><button class="name-btn" style="width:100%;font-weight:500;" title="Show store level detail for this form"
+          onclick="openPriceDetail(${jsArg(c.name)})">${esc(c.name)}</button></td>
       <td>${window}</td>
       <td>${statusCell}</td>
       <td class="num">${c.target ?? '—'}</td>
@@ -657,8 +922,10 @@ function renderPricing(campaigns) {
         <thead><tr><th>Form</th><th>Window</th><th>Status</th><th class="num">Target</th><th class="num">Captured</th><th class="num">Capturing Compliance</th><th class="num">Not Captured</th></tr></thead>
         <tbody>${rows || '<tr><td colspan="7" class="empty-state">No price survey forms match.</td></tr>'}</tbody>
       </table></div>
-      <div class="table-note">These are the pure price-survey forms (Dashboard label "Compliance N/A") &mdash; no Yes/No or Target metric exists to score, so they're tracked here on coverage alone and left out of the compliance-ranked pages.</div>
+      <div class="table-note">Click a form to load its store level detail below. These are the pure price-survey forms (Dashboard label "Compliance N/A") &mdash; no Yes/No or Target metric exists to score, so they're tracked here on coverage alone.</div>
     </div>
+
+    ${renderPriceDetail(priceForms)}
   `;
 }
 
@@ -674,6 +941,8 @@ function questionFileFor(formName) {
   return c && c.questionFile ? c.questionFile : null;
 }
 
+// questionText null means "every question on this form": the table is a
+// store x question grid by default, and clicking a question narrows it.
 async function openQuestionDrill(formName, questionText) {
   const file = questionFileFor(formName);
   if (!file) {
@@ -681,6 +950,7 @@ async function openQuestionDrill(formName, questionText) {
     render();
     return;
   }
+  state.answerFilter = 'ALL';
   QDRILL = { form: formName, question: questionText, file: file, loading: true };
   render();
   try {
@@ -689,9 +959,18 @@ async function openQuestionDrill(formName, questionText) {
       QUESTION_FILE_CACHE[file] = (payload && payload.rows) || [];
     }
     const all = QUESTION_FILE_CACHE[file];
+    // Reason questions are context for the answers, not rows in their own
+    // right -- they stay out of the grid and feed the Issue column instead.
+    const reasons = buildReasonIndex(all, questionText);
+    const rows = questionText
+      ? all.filter(r => r.question === questionText)
+      : all.filter(r => r.question && !REASON_RE.test(r.question));
     QDRILL = {
       form: formName, question: questionText, file: file,
-      rows: all.filter(r => r.question === questionText),
+      rows: rows,
+      allRows: all,
+      reasons: reasons,
+      stores: buildStoreIndex(formName),
     };
   } catch (e) {
     QDRILL = { form: formName, question: questionText, file: file, error: e.message };
@@ -699,7 +978,39 @@ async function openQuestionDrill(formName, questionText) {
   render();
 }
 
-function closeQuestionDrill() { QDRILL = null; render(); }
+function closeQuestionDrill() { QDRILL = null; state.answerFilter = 'ALL'; render(); }
+function setShowContextQs(v) { state.showContextQs = v; render(); }
+function setFocusExpanded(v) { state.focusExpanded = v; render(); }
+function setAnswerFilter(v) { state.answerFilter = (state.answerFilter === v) ? 'ALL' : v; render(); }
+
+// Reason questions ("If no, provide a reason", "Why did Manager Refuse?") are
+// themselves questions on the same form, so a store's reason for answering No
+// is its answer to the neighbouring reason question. Built once per drill.
+const REASON_RE = /reason|why|refus|no stock|order placed|issue/i;
+
+function buildReasonIndex(allRows, forQuestion) {
+  const idx = new Map();
+  for (const r of allRows) {
+    if (!r.question || r.question === forQuestion) continue;
+    if (!REASON_RE.test(r.question)) continue;
+    const a = r.answer;
+    if (a === null || a === undefined || String(a).trim() === '') continue;
+    const txt = String(a).trim();
+    // Skip the placeholder answers reps type when a reason does not apply.
+    if (/^(n\/?a|na|none|no|0|-)$/i.test(txt)) continue;
+    if (!idx.has(r.store)) idx.set(r.store, txt);
+  }
+  return idx;
+}
+
+// Per-store compliance and image come from the main payload's storeRows, keyed
+// by store code, so the drill can show them without another fetch.
+function buildStoreIndex(formName) {
+  const c = DATA.campaigns.find(x => x.name === formName);
+  const idx = new Map();
+  for (const r of (c && c.storeRows) || []) idx.set(r.store, r);
+  return idx;
+}
 
 function answerTone(r) {
   if (r.isYes === true || r.isYes === 'True' || r.isYes === 'Yes' || r.isYes === 1) return 'good';
@@ -711,11 +1022,23 @@ function answerTone(r) {
 
 function exportQuestionDrill() {
   if (!QDRILL || !QDRILL.rows) return;
-  const cols = ['store', 'storeName', 'region', 'manager', 'rep', 'captured', 'answer', 'target', 'targetMet'];
-  const labels = ['Store Code', 'Store Name', 'Region', 'Supervisor', 'Rep Name', 'Store Visited', 'Answer', 'Numeric Target', 'Target Met'];
+  const labels = ['Form', 'Question', 'Store Code', 'Store Name', 'Region', 'Supervisor', 'Rep Name',
+                  'Store Visited', 'Answer', 'Compliance', 'Issue Tracker', 'Image'];
   const q = v => '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"';
   const lines = [labels.map(q).join(',')];
-  QDRILL.rows.forEach(r => lines.push(cols.map(c => q(r[c])).join(',')));
+  const exportRows = state.answerFilter === 'yes' ? QDRILL.rows.filter(r => answerTone(r) === 'good')
+                   : state.answerFilter === 'no'  ? QDRILL.rows.filter(r => answerTone(r) === 'crit')
+                   : QDRILL.rows;
+  exportRows.forEach(r => {
+    const sr = QDRILL.stores ? QDRILL.stores.get(r.store) : null;
+    const comp = sr && sr.compliance !== null && sr.compliance !== undefined ? sr.compliance : null;
+    const isNo = answerTone(r) === 'crit';
+    const reason = isNo && QDRILL.reasons ? QDRILL.reasons.get(r.store) : null;
+    lines.push([QDRILL.form, r.question || QDRILL.question,
+                r.store, r.storeName, r.region, r.manager, r.rep, r.captured, r.answer,
+                comp === null ? '' : (comp * 100).toFixed(1) + '%',
+                reason || '', r.image || (sr && sr.imageUrl) || ''].map(q).join(','));
+  });
   const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -724,12 +1047,180 @@ function exportQuestionDrill() {
   URL.revokeObjectURL(a.href);
 }
 
+// --- Price survey store detail --------------------------------------------
+// Price surveys have no compliance metric, so the useful store-level view is
+// the answers themselves: one row per store, one column per question. Loaded
+// from the form's own question file on demand, same as the audit drill.
+let PRICE_DRILL = null;   // { form, loading, error, questions, stores }
+
+async function openPriceDetail(formName) {
+  const c = DATA.campaigns.find(x => x.name === formName);
+  if (!c || !c.questionFile) {
+    PRICE_DRILL = { form: formName, error: 'No store-level answers were exported for this form.' };
+    render();
+    return;
+  }
+  PRICE_DRILL = { form: formName, loading: true };
+  render();
+  try {
+    if (!QUESTION_FILE_CACHE[c.questionFile]) {
+      const payload = await loadDataFile('questions/' + c.questionFile, false);
+      QUESTION_FILE_CACHE[c.questionFile] = (payload && payload.rows) || [];
+    }
+    const rows = QUESTION_FILE_CACHE[c.questionFile];
+
+    // Column order follows the form's own question order, not the order rows
+    // happen to appear in.
+    const declared = (c.questionRows || []).map(q => q.question);
+    const seen = [...new Set(rows.map(r => r.question).filter(Boolean))];
+    const questions = declared.filter(q => seen.includes(q))
+      .concat(seen.filter(q => !declared.includes(q)));
+
+    // Pivot to one record per store.
+    const byStore = new Map();
+    for (const r of rows) {
+      let rec = byStore.get(r.store);
+      if (!rec) {
+        rec = { store: r.store, storeName: r.storeName, region: r.region,
+                manager: r.manager, rep: r.rep, captured: r.captured,
+                image: r.image || null, answers: {} };
+        byStore.set(r.store, rec);
+      }
+      if (r.question) rec.answers[r.question] = r.answer;
+      if (!rec.image && r.image) rec.image = r.image;
+    }
+
+    // Stores that were targeted but never captured have no answer rows at all,
+    // so fold them in from the payload -- otherwise the table silently omits
+    // exactly the stores that failed to report.
+    for (const sr of c.storeRows || []) {
+      if (byStore.has(sr.store)) continue;
+      byStore.set(sr.store, {
+        store: sr.store, storeName: sr.storeName, region: sr.region,
+        manager: sr.manager, rep: sr.rep, captured: sr.captured,
+        image: sr.imageUrl || null, answers: {},
+      });
+    }
+
+    PRICE_DRILL = { form: formName, questions: questions, stores: [...byStore.values()] };
+  } catch (e) {
+    PRICE_DRILL = { form: formName, error: e.message };
+  }
+  render();
+}
+
+function closePriceDetail() { PRICE_DRILL = null; state.priceAnswered = 'ALL'; render(); }
+function setPriceAnswered(v) { state.priceAnswered = (state.priceAnswered === v) ? 'ALL' : v; render(); }
+
+function priceDetailRows() {
+  if (!PRICE_DRILL || !PRICE_DRILL.stores) return [];
+  const qs = PRICE_DRILL.questions;
+  const hasAny = s => qs.some(q => {
+    const a = s.answers[q];
+    return a !== null && a !== undefined && String(a).trim() !== '';
+  });
+  let rows = PRICE_DRILL.stores;
+  if (state.priceAnswered === 'answered') rows = rows.filter(hasAny);
+  if (state.priceAnswered === 'missing') rows = rows.filter(s => !hasAny(s));
+  return rows.filter(s => matchesFilters(s, null));
+}
+
+function exportPriceDetail() {
+  if (!PRICE_DRILL || !PRICE_DRILL.stores) return;
+  const qs = PRICE_DRILL.questions;
+  const labels = ['Store Code', 'Store Name', 'Region', 'Supervisor', 'Rep Name', 'Store Visited']
+    .concat(qs).concat(['Image']);
+  const q = v => '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"';
+  const lines = [labels.map(q).join(',')];
+  priceDetailRows().forEach(s => {
+    lines.push([s.store, s.storeName, s.region, s.manager, s.rep, s.captured]
+      .concat(qs.map(x => s.answers[x])).concat([s.image || '']).map(q).join(','));
+  });
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'price-survey-detail-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
+function renderPriceDetail(priceForms) {
+  const head = (title, sub, controls) => `
+      <div class="panel-head">
+        <div><div class="panel-title">${title}</div><div class="panel-sub">${sub}</div></div>
+        ${controls || ''}
+      </div>`;
+
+  if (!PRICE_DRILL) {
+    return `<div class="panel">${head('Store Level Detail',
+      'Click a form above to load every store result for that survey')}
+      <div class="panel-body"><div class="empty-state">Select a price survey form to see its store-by-store results.</div></div></div>`;
+  }
+  if (PRICE_DRILL.loading) {
+    return `<div class="panel drill">${head('Store Level Detail', esc(PRICE_DRILL.form))}
+      <div class="panel-body"><div class="empty-state">Loading store results&hellip;</div></div></div>`;
+  }
+  if (PRICE_DRILL.error) {
+    return `<div class="panel drill">${head('Store Level Detail', esc(PRICE_DRILL.form),
+      `<button class="reset-btn" onclick="closePriceDetail()">&times; Close</button>`)}
+      <div class="panel-body"><div class="empty-state" style="color:var(--nx-crit);">${esc(PRICE_DRILL.error)}</div></div></div>`;
+  }
+
+  const qs = PRICE_DRILL.questions;
+  const rows = priceDetailRows();
+  const LIMIT = 400;
+  const all = PRICE_DRILL.stores.filter(s => matchesFilters(s, null));
+  const answered = all.filter(s => qs.some(q => {
+    const a = s.answers[q];
+    return a !== null && a !== undefined && String(a).trim() !== '';
+  })).length;
+
+  const controls = `
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          <button class="filter-pill ${state.priceAnswered === 'answered' ? 'active good' : 'good'}" onclick="setPriceAnswered('answered')">Answered <b>${answered.toLocaleString()}</b></button>
+          <button class="filter-pill ${state.priceAnswered === 'missing' ? 'active crit' : 'crit'}" onclick="setPriceAnswered('missing')">No result <b>${(all.length - answered).toLocaleString()}</b></button>
+          <button class="filter-pill ${state.priceAnswered === 'ALL' ? 'active neutral' : 'neutral'}" onclick="setPriceAnswered('ALL')">All <b>${all.length.toLocaleString()}</b></button>
+          <button class="reset-btn" onclick="exportPriceDetail()">Export to Excel</button>
+          <button class="reset-btn" onclick="closePriceDetail()">&times; Close</button>
+        </div>`;
+
+  return `
+    <div class="panel drill">
+      ${head('Store Level Detail', esc(PRICE_DRILL.form) + ' &middot; ' + qs.length + ' question(s)', controls)}
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th>Store</th><th>Region</th><th>Supervisor</th><th>Rep Name</th><th>Store Visited</th>
+          ${qs.map(q => `<th title="${esc(q)}">${esc(q.length > 40 ? q.slice(0, 38) + '…' : q)}</th>`).join('')}
+          <th>Image</th>
+        </tr></thead>
+        <tbody>${rows.length ? rows.slice(0, LIMIT).map(s => `
+          <tr>
+            <td class="name-cell">${esc(s.storeName)} <span style="color:#4a6b8a;">(${esc(s.store)})</span></td>
+            <td>${esc(s.region) || '—'}</td>
+            <td>${esc(s.manager) || '—'}</td>
+            <td>${esc(s.rep) || '—'}</td>
+            <td><span class="pill ${s.captured === 'Yes' ? 'good' : 'crit'}">${esc(s.captured) || '—'}</span></td>
+            ${qs.map(q => {
+              const a = s.answers[q];
+              const blank = a === null || a === undefined || String(a).trim() === '';
+              return `<td class="answer-cell"${blank ? '' : ` title="${esc(a)}"`}>${blank ? '—' : esc(a)}</td>`;
+            }).join('')}
+            <td>${s.image ? `<a href="${esc(s.image)}" target="_blank" rel="noopener" style="color:var(--color-accent-300);">View</a>` : '—'}</td>
+          </tr>`).join('') : `<tr><td colspan="${qs.length + 6}" class="empty-state">No stores match.</td></tr>`}</tbody>
+      </table></div>
+      ${rows.length > LIMIT ? `<div class="table-note">Showing first ${LIMIT} of ${rows.length.toLocaleString()} &mdash; Export includes all ${rows.length.toLocaleString()}.</div>` : ''}
+    </div>
+  `;
+}
+
 function renderQuestionDrill() {
   if (!QDRILL) return '';
   const head = `
       <div class="panel-head">
         <div><div class="panel-title">Store Answers</div>
-        <div class="panel-sub">${esc(QDRILL.question)} &middot; ${esc(QDRILL.form)}</div></div>
+        <div class="panel-sub">${QDRILL.question
+            ? esc(QDRILL.question) + ' &middot; <a href="#" onclick="openQuestionDrill(' + jsArg(QDRILL.form) + ', null); return false;" style="color:var(--color-accent-300);">show all questions</a>'
+            : 'Every question &times; every store &middot; click a question above to filter'} &middot; ${esc(QDRILL.form)}</div></div>
         <div style="display:flex;gap:8px;align-items:center;">
           ${QDRILL.rows ? `<button class="reset-btn" onclick="exportQuestionDrill()">Export to Excel</button>` : ''}
           <button class="reset-btn" onclick="closeQuestionDrill()">&times; Close</button>
@@ -743,39 +1234,419 @@ function renderQuestionDrill() {
     return `<div class="panel drill">${head}<div class="panel-body"><div class="empty-state" style="color:var(--nx-crit);">${esc(QDRILL.error)}</div></div></div>`;
   }
 
-  const rows = QDRILL.rows || [];
+  const allRows = QDRILL.rows || [];
   const LIMIT = 400;
-  const yes = rows.filter(r => answerTone(r) === 'good').length;
-  const no = rows.filter(r => answerTone(r) === 'crit').length;
+  // Counts stay on the full set so each pill shows what it would select, not
+  // the size of the current selection.
+  const yes = allRows.filter(r => answerTone(r) === 'good').length;
+  const no = allRows.filter(r => answerTone(r) === 'crit').length;
+  let rows = state.answerFilter === 'yes' ? allRows.filter(r => answerTone(r) === 'good')
+           : state.answerFilter === 'no'  ? allRows.filter(r => answerTone(r) === 'crit')
+           : allRows;
+  // Grouped by store so one store's questions read as a block.
+  if (!QDRILL.question) {
+    rows = rows.slice().sort((a, b) =>
+      String(a.storeName || '').localeCompare(String(b.storeName || '')) ||
+      String(a.question || '').localeCompare(String(b.question || '')));
+  }
+  const bd = answerBreakdown(rows);
+  // A Yes/No question is fully described by the two pills above. Anything else
+  // -- reason questions, unit counts -- is only readable as its answers, so
+  // show the frequency table for those.
+  const isYesNo = (yes + no) >= bd.answered && bd.distinct <= 3;
 
   return `
     <div class="panel drill">
       ${head}
       <div class="panel-body" style="padding-bottom:6px;">
-        <span class="pill good">Yes ${yes.toLocaleString()}</span>
-        <span class="pill crit" style="margin-left:6px;">No ${no.toLocaleString()}</span>
-        <span class="pill na" style="margin-left:6px;">Total ${rows.length.toLocaleString()}</span>
+        <button class="filter-pill ${state.answerFilter === 'yes' ? 'active good' : 'good'}" onclick="setAnswerFilter('yes')">Yes <b>${yes.toLocaleString()}</b></button>
+        <button class="filter-pill ${state.answerFilter === 'no' ? 'active crit' : 'crit'}" style="margin-left:6px;" onclick="setAnswerFilter('no')">No <b>${no.toLocaleString()}</b></button>
+        <button class="filter-pill ${state.answerFilter === 'ALL' ? 'active neutral' : 'neutral'}" style="margin-left:6px;" onclick="setAnswerFilter('ALL')">All <b>${allRows.length.toLocaleString()}</b></button>
+        ${state.answerFilter !== 'ALL' ? `<span class="scope-note">showing ${rows.length.toLocaleString()} of ${allRows.length.toLocaleString()}</span>` : ''}
       </div>
+      ${!isYesNo && bd.answered ? `
+      <div class="panel-body" style="padding-top:4px;padding-bottom:10px;">
+        <div class="panel-title" style="margin-bottom:8px;">Answer breakdown</div>
+        ${bd.list.slice(0, 10).map((a, i) => `
+          <div class="ranked-row">
+            <span class="rank">${i + 1}</span>
+            <span class="name" style="width:300px;" title="${esc(a.answer)}">${esc(a.answer)}</span>
+            <div class="track"><div class="fill" style="width:${a.count / bd.answered * 100}%;background:var(--color-accent);"></div></div>
+            <span class="value">${a.count.toLocaleString()}</span>
+            <span class="value bar-meta" style="width:56px;color:var(--color-neutral-500);font-weight:400;">${(a.count / bd.answered * 100).toFixed(0)}%</span>
+          </div>`).join('')}
+        <div class="table-note" style="padding:8px 0 0;">${bd.distinct.toLocaleString()} distinct answer(s) across ${bd.answered.toLocaleString()} answered store(s)${bd.distinct > 10 ? ', top 10 shown' : ''}.${bd.distinct > bd.answered * 0.5 ? ' Mostly free text, so counts are indicative rather than a metric.' : ''}</div>
+      </div>` : ''}
       <div class="table-wrap"><table>
         <thead><tr>
-          <th>Store</th><th>Region</th><th>Supervisor</th><th>Rep Name</th>
-          <th>Store Visited</th><th>Answer</th><th class="num">Target</th><th>Target Met</th>
+          <th>Question</th><th>Store</th><th>Region</th><th>Supervisor</th><th>Rep</th>
+          <th>Visited</th><th>Answer</th><th>Compl.</th><th>Issue</th><th>Img</th>
         </tr></thead>
-        <tbody>${rows.length ? rows.slice(0, LIMIT).map(r => `
+        <tbody>${rows.length ? rows.slice(0, LIMIT).map(r => {
+          const sr = QDRILL.stores ? QDRILL.stores.get(r.store) : null;
+          const comp = sr && sr.compliance !== null && sr.compliance !== undefined ? sr.compliance : null;
+          // Only surface a reason where the store actually answered No -- a
+          // reason attached to a Yes would be misleading.
+          const isNo = answerTone(r) === 'crit';
+          const reason = isNo && QDRILL.reasons ? QDRILL.reasons.get(r.store) : null;
+          const img = r.image || (sr && sr.imageUrl) || '';
+          return `
           <tr>
-            <td class="name-cell">${esc(r.storeName)} <span style="color:#4a6b8a;">(${esc(r.store)})</span></td>
+            <td class="q-col" title="${esc(r.question || QDRILL.question)}">${esc(r.question || QDRILL.question)}</td>
+            <td class="name-cell" title="${esc(r.storeName)} (${esc(r.store)})">${esc(r.storeName)}</td>
             <td>${esc(r.region) || '—'}</td>
             <td>${esc(r.manager) || '—'}</td>
             <td>${esc(r.rep) || '—'}</td>
             <td><span class="pill ${r.captured === 'Yes' ? 'good' : 'crit'}">${esc(r.captured) || '—'}</span></td>
             <td><span class="pill ${answerTone(r)}">${esc(r.answer) || '—'}</span></td>
-            <td class="num">${r.target === null || r.target === undefined || r.target === '' ? '—' : esc(r.target)}</td>
-            <td>${r.targetMet === null || r.targetMet === undefined || r.targetMet === '' ? '—' : esc(r.targetMet)}</td>
-          </tr>
-        `).join('') : `<tr><td colspan="8" class="empty-state">No store answers recorded for this question.</td></tr>`}</tbody>
+            <td>${comp === null ? '—' : `<span class="pill ${tierClass(pct(comp))}">${fmtPct(pct(comp), comp === 0 || comp === 1 ? 0 : 1)}</span>`}</td>
+            <td class="issue-cell" title="${esc(reason || '')}">${reason ? esc(reason) : '—'}</td>
+            <td>${img ? `<a href="${esc(img)}" target="_blank" rel="noopener" style="color:var(--color-accent-300);">View</a>` : '—'}</td>
+          </tr>`;
+        }).join('') : `<tr><td colspan="10" class="empty-state">${state.answerFilter === 'ALL' ? 'No store answers recorded for this question.' : 'No ' + state.answerFilter.toUpperCase() + ' answers for this question.'}</td></tr>`}</tbody>
       </table></div>
       ${rows.length > LIMIT ? `<div class="table-note">Showing first ${LIMIT} of ${rows.length.toLocaleString()} &mdash; Export includes all ${rows.length.toLocaleString()}.</div>` : ''}
     </div>
+  `;
+}
+
+// --- Form Analysis --------------------------------------------------------
+// One form at a time, top to bottom: compliance by question, compliance by
+// region, then the store-level answers for whichever question is selected.
+// Question-level aggregates come from the main payload; the store rows come
+// from that form's own file, fetched on demand.
+
+// Takes the already-filtered campaign list so the client / form / banner /
+// region filters narrow the picker too. Falls back to everything only when
+// called without a list.
+function formsWithQuestions(list) {
+  return (list || DATA.campaigns)
+    .filter(c => c.status === 'complete' && (c.questionRows || []).length)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Land on the form that most needs looking at: lowest display compliance among
+// forms still open, falling back to lowest overall.
+function defaultForm(list) {
+  const all = formsWithQuestions(list);
+  if (!all.length) return null;
+  const scored = all.filter(c => formCompliance(c) !== null);
+  const open = scored.filter(isOpen);
+  const pool = open.length ? open : (scored.length ? scored : all);
+  return pool.slice().sort((a, b) => (formCompliance(a) ?? 1) - (formCompliance(b) ?? 1))[0].name;
+}
+
+function currentForm(list) {
+  const all = formsWithQuestions(list);
+  if (!all.length) return null;
+  // A form pinned before the filters changed may no longer be in scope --
+  // fall back rather than showing a form the filters exclude.
+  if (state.qForm && all.some(c => c.name === state.qForm)) return state.qForm;
+  return defaultForm(list);
+}
+
+// Per-question Yes and slot counts for just the stores in scope. Only possible
+// once the form's answer file is loaded (it is, on Form Analysis -- the grid
+// below loads it), so this returns null when it cannot be done honestly.
+function filteredQuestionTotals(campaign) {
+  if (!storeFilterActive()) return null;
+  if (!QDRILL || QDRILL.form !== campaign.name || !QDRILL.allRows) return null;
+  const inScope = new Set((campaign.storeRows || []).map(r => r.store));
+  if (!inScope.size) return new Map();
+  const totals = new Map();
+  for (const r of QDRILL.allRows) {
+    if (!r.question || !inScope.has(r.store)) continue;
+    let t = totals.get(r.question);
+    if (!t) { t = { yes: 0, answered: 0, sum: 0, numeric: 0, mean: null }; totals.set(r.question, t); }
+    t.answered++;
+    const v = Number(r.answer);
+    if (r.answer !== null && r.answer !== '' && isFinite(v)) { t.sum += v; t.numeric++; t.mean = t.sum / t.numeric; }
+    // answerTone already handles every shape Is Yes / Target Met arrives in
+    // (numeric 1/0, TRUE/True, "Yes"), which a bespoke test here got wrong.
+    if (answerTone(r) === 'good') t.yes++;
+  }
+  totals.storeCount = inScope.size;
+  return totals;
+}
+
+// Rewrites a form's question rows against the filtered store set, so the bars
+// and the form KPI move with the filters.
+function questionRowsInScope(campaign) {
+  const f = filteredQuestionTotals(campaign);
+  if (!f) return campaign.questionRows || [];
+  const n = f.storeCount || 0;
+  const num = v => (v === null || v === undefined || v === '') ? null : Number(v);
+  return (campaign.questionRows || []).map(q => {
+    const t = f.get(q.question);
+    const wasYesNo = num(q.yes) !== null && num(q.no) !== null && (num(q.yes) + num(q.no)) > 0;
+    const hasTarget = num(q.targetCompliance) !== null || num(q.numericTarget) !== null;
+    if (!t) {
+      return Object.assign({}, q, wasYesNo ? { yes: 0, no: 0, target: n, answered: 0 }
+        : hasTarget ? { metTarget: 0, targetCompliance: 0, target: n, answered: 0, average: null }
+        : { answered: 0, average: null });
+    }
+    if (wasYesNo) {
+      return Object.assign({}, q, { yes: t.yes, no: Math.max(0, t.answered - t.yes), target: n, answered: t.answered });
+    }
+    if (hasTarget) {
+      // A KPI question with a target is scored on target-met, not Yes/No.
+      return Object.assign({}, q, { metTarget: t.yes, targetCompliance: n ? t.yes / n : null,
+                                    target: n, answered: t.answered, average: t.mean });
+    }
+    // No target: there is nothing to pass or fail, so only the mean changes.
+    return Object.assign({}, q, { answered: t.answered, average: t.mean, target: n });
+  });
+}
+
+function scoredQuestions(campaign) {
+  // Sorted on the figure actually displayed, which is not always
+  // Yes/No compliance: a facings question is scored on its target-met rate, and
+  // a question with no target has only a mean answer. Sorting on the Yes/No
+  // field alone left target questions in arbitrary order.
+  const rank = { rate: 0, target: 0, avg: 1, none: 2 };
+  return questionRowsInScope(campaign)
+    .map(q => Object.assign({}, q, {
+      compliance: (q.compliance === null || q.compliance === undefined || q.compliance === '')
+        ? null : Number(q.compliance),
+    }))
+    .sort((a, b) => {
+      const ma = questionMetric(a), mb = questionMetric(b);
+      const ra = rank[ma.kind], rb = rank[mb.kind];
+      if (ra !== rb) return ra - rb;                    // scored, then averages, then unscored
+      if (ma.bar !== null && mb.bar !== null) return ma.bar - mb.bar;   // worst first
+      return 0;
+    });
+}
+
+// Numeric KPI answers are counts (shelves, facings) or rates of sale, so the
+// sensible resolution differs by magnitude.
+function fmtNum(v) {
+  if (v === null || v === undefined || v === '') return '—';
+  const n = Number(v);
+  if (!isFinite(n)) return '—';
+  // Targets are whole facings; showing "10.0" reads like a measurement.
+  if (Number.isInteger(n)) return n.toLocaleString();
+  if (Math.abs(n) >= 100) return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  if (Math.abs(n) >= 10) return n.toFixed(1);
+  return n.toFixed(2);
+}
+
+// What a question's headline number should be. Yes/No questions have a
+// compliance rate; Numeric KPI questions have a mean answer and sometimes a
+// target-met rate; supporting/other questions have neither, only answers.
+function questionMetric(q) {
+  const num = v => (v === null || v === undefined || v === '') ? null : Number(v);
+  const yes = num(q.yes), no = num(q.no), target = num(q.target), answered = num(q.answered);
+  const reported = num(q.compliance);   // the report's own rate, over answered stores only
+
+  // A store that was never visited has not complied, so it counts against the
+  // question. Scoring over answered stores only lets one store answering yes
+  // read as 100% on a 3,039-store form -- true of the sample, useless as a
+  // measure. "reported" is kept for reconciliation with the Excel reports.
+  if (yes !== null && no !== null && (yes + no) > 0) {
+    const denom = target || (yes + no);
+    const rate = yes / denom;
+    return { kind: 'rate', bar: rate * 100, label: fmtPct(rate * 100, 1),
+             yes: yes, no: no, answered: answered, target: target, reported: reported };
+  }
+  if (reported !== null) return { kind: 'rate', bar: reported * 100, label: fmtPct(reported * 100, 1), reported: reported };
+  const tc = (q.targetCompliance === null || q.targetCompliance === undefined || q.targetCompliance === '')
+    ? null : Number(q.targetCompliance);
+  const avg = (q.average === null || q.average === undefined || q.average === '')
+    ? null : Number(q.average);
+  if (tc !== null) {
+    return { kind: 'target', bar: tc * 100, label: fmtPct(tc * 100, 1),
+             target: num(q.numericTarget), met: num(q.metTarget), avg: avg,
+             note: 'avg ' + fmtNum(avg) };
+  }
+  if (avg !== null) return { kind: 'avg', bar: null, label: fmtNum(avg), note: 'average' };
+  return { kind: 'none', bar: null, label: '—', note: q.type || '' };
+}
+
+// Frequency of answers for a question, most common first. Reason/supporting
+// questions are free text, so this is a reading aid rather than a metric --
+// hence the distinct-answer count alongside it.
+function answerBreakdown(rows) {
+  const freq = new Map();
+  let answered = 0;
+  for (const r of rows) {
+    const a = r.answer;
+    if (a === null || a === undefined || String(a).trim() === '') continue;
+    answered++;
+    const key = String(a).trim();
+    freq.set(key, (freq.get(key) || 0) + 1);
+  }
+  const list = [...freq.entries()].map(([answer, count]) => ({ answer, count }))
+    .sort((a, b) => b.count - a.count);
+  return { list: list, answered: answered, distinct: list.length };
+}
+
+function setQForm(name) {
+  state.qForm = name;
+  QDRILL = null;
+  AUTO_DRILL_FOR = null;
+  render();
+}
+
+// The weakest scored question on a form -- what the drill opens by default.
+function defaultDrillQuestion(c) {
+  if (!c) return null;
+  const qs = scoredQuestions(c).filter(q => {
+    const k = questionMetric(q).kind;
+    return k === 'rate' || k === 'target';
+  });
+  return qs.length ? qs[0].question : null;
+}
+
+// Guards the auto-open so it fires once per form, not on every re-render (a
+// filter change would otherwise reload the file and fight the user's click).
+let AUTO_DRILL_FOR = null;
+
+function maybeAutoOpenDrill(formName) {
+  if (!formName || AUTO_DRILL_FOR === formName) return;
+  if (QDRILL && QDRILL.form === formName) { AUTO_DRILL_FOR = formName; return; }
+  const c = DATA.campaigns.find(x => x.name === formName);
+  const q = c && c.questionFile ? true : null;
+  if (!q) { AUTO_DRILL_FOR = formName; return; }
+  AUTO_DRILL_FOR = formName;
+  // Deferred: render() is mid-flight, and openQuestionDrill calls render again.
+  // Opens with no question, i.e. the full store x question grid.
+  setTimeout(() => openQuestionDrill(formName, null), 0);
+}
+
+function renderFormAnalysis(campaigns) {
+  const forms = formsWithQuestions(campaigns);
+  if (!forms.length) {
+    return '<div class="panel"><div class="panel-body"><div class="empty-state">No form with question results matches the current filters.</div></div></div>';
+  }
+
+  const formName = currentForm(campaigns);
+  // Use the filtered instance, so region/banner filters narrow this form's
+  // store rows too rather than silently showing the unfiltered set.
+  const c = campaigns.find(x => x.name === formName) || DATA.campaigns.find(x => x.name === formName);
+  const qs = scoredQuestions(c);
+  const scored = qs.filter(q => q.compliance !== null);
+  const t = timing(c);
+
+  // Region breakdown for this form only, from its own store rows.
+  const byRegion = rollupGroups([c], 'region').sort((a, b) => (b.compliance ?? -1) - (a.compliance ?? -1));
+
+  const selected = QDRILL && QDRILL.form === formName ? QDRILL.question : null;
+  maybeAutoOpenDrill(formName);
+
+  const worstQ = scored.length ? scored[0] : null;
+
+  const kpi = (label, value, sub, color) => `
+      <div class="kpi-card"><div class="kpi-accent" style="background:${color};"></div><div class="kpi-body">
+        <span class="kpi-label">${label}</span><span class="kpi-value" style="color:${color};">${value}</span>
+        <span class="kpi-sub">${sub}</span>
+      </div></div>`;
+
+  // Question bars. Clicking a label loads that question's store answers.
+  const measured = qs.filter(q => questionMetric(q).kind !== 'none');
+  const contextQs = qs.filter(q => questionMetric(q).kind === 'none');
+
+  const questionBars = measured.map((q, i) => {
+    const m = questionMetric(q);
+    const active = selected === q.question;
+    // Only a percentage can share one 0-100 scale. A mean answer (5.8 shelves,
+    // 673 units) has no such scale, so those rows show the number without a
+    // bar rather than a bar that means nothing.
+    const bar = m.bar === null
+      ? '<div class="track no-scale" title="No percentage scale for this question type"></div>'
+      : `<div class="track"><div class="fill" style="width:${m.bar}%;background:${tierColor(m.bar)};"></div></div>`;
+    const meta = m.kind === 'rate'
+      ? `${Number(q.yes || 0).toLocaleString()} yes of ${Number(q.target || 0).toLocaleString()}`
+      : m.kind === 'target'
+        ? `target ${fmtNum(m.target)} &middot; avg ${fmtNum(m.avg)}` +
+          (m.met !== null && m.met !== undefined && m.target !== null
+            ? ` &middot; ${Number(m.met).toLocaleString()} of ${Number(q.target || 0).toLocaleString()} met`
+            : '')
+        : esc(m.note || '');
+    return `
+      <div class="ranked-row ${active ? 'row-active' : ''}">
+        <span class="rank">${i + 1}</span>
+        <button class="name name-btn q-name ${active ? 'active' : ''}" title="${active ? 'Show all questions again' : esc(q.question)}"
+                onclick="openQuestionDrill(${jsArg(formName)}, ${active ? 'null' : jsArg(q.question)})">${esc(q.question)}</button>
+        ${bar}
+        <span class="value" style="color:${m.bar === null ? 'var(--color-neutral-300)' : tierColor(m.bar)};">${m.label}</span>
+        <span class="value bar-meta" style="width:210px;text-align:right;color:var(--color-neutral-500);font-weight:400;">${meta}</span>
+      </div>`;
+  }).join('');
+
+  const regionBars = byRegion.map((a, i) => {
+    const v = a.compliance === null ? null : a.compliance * 100;
+    return `
+      <div class="ranked-row">
+        <span class="rank">${i + 1}</span>
+        <span class="name">${esc(a.key)}</span>
+        <div class="track"><div class="fill" style="width:${v === null ? 0 : v}%;background:${tierColor(v)};"></div></div>
+        <span class="value" style="color:${tierColor(v)};">${v === null ? '—' : fmtPct(v, 1)}</span>
+        <span class="value bar-meta" style="width:104px;color:var(--color-neutral-500);font-weight:400;">${a.captured.toLocaleString()}/${a.target.toLocaleString()} captured</span>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="panel">
+      <div class="panel-head">
+        <div><div class="panel-title">Form</div>
+        <div class="panel-sub">${formName ? esc(formName) : ''}</div></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <select class="form-picker" onchange="setQForm(this.value)">
+            ${forms.map(f => `<option value="${esc(f.name)}" ${f.name === formName ? 'selected' : ''}>${esc(f.name)}</option>`).join('')}
+          </select>
+          <button class="reset-btn" onclick="exportQuestions()">Export questions</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-grid" style="grid-template-columns:repeat(5,minmax(0,1fr));">
+      ${kpi('Capturing Compliance', fmtPct(pct(c.coverage)), `${(c.captured || 0).toLocaleString()} of ${(c.target || 0).toLocaleString()} visited`, tierColor(pct(c.coverage)))}
+      ${(() => {
+        // Same rule as the question bars: every targeted store is in the
+        // denominator. The report's own figure (answered stores only) is kept
+        // in the sub-line so the two can be reconciled.
+        const rows = c.storeRows || [];
+        const answered = answeredCount(rows);
+        const overTargeted = complianceSlots(rows, slotsFor(c));
+        return kpi('Display Compliance', fmtPct(pct(overTargeted)),
+          `${answered.toLocaleString()} of ${rows.length.toLocaleString()} stores answered &middot; ${fmtPct(pct(c.compliance))} of those`,
+          tierColor(pct(overTargeted)));
+      })()}
+      ${kpi('Time Gone', t.known ? fmtPct(t.timeGone * 100) : '—', t.known ? (t.open ? fmtDaysLeft(t.daysLeft) : 'closed') : '', 'var(--color-neutral-400)')}
+      ${kpi('Questions', measured.length, `${contextQs.length} issue-tracking question(s) excluded`, 'var(--color-accent)')}
+      ${kpi('Weakest Question', worstQ ? fmtPct(worstQ.compliance * 100) : '—', worstQ ? esc(worstQ.question.slice(0, 46)) : '', 'var(--nx-crit)')}
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><div>
+        <div class="panel-title">Compliance by Question</div>
+        <div class="panel-sub">${storeFilterActive() ? '<span style="color:var(--color-accent-300);">Filtered to the stores in scope.</span> ' : ''}Worst first &middot; a % is the share of targeted stores that complied &mdash; answered Yes, or met the facings target &mdash; with unanswered counting against. A plain number is the mean answer where the question sets no target. Click a question for store answers.</div>
+      </div></div>
+      <div class="panel-body">${questionBars || '<div class="empty-state">This form has no scored questions.</div>'}</div>
+      ${contextQs.length ? `<div class="table-note">${contextQs.length} issue-tracking question(s) are not scored and are excluded here &mdash; their answers appear in the Issue Tracker column below. <button class="reset-btn" style="padding:2px 8px;font-size:10px;" onclick="setShowContextQs(${state.showContextQs ? 'false' : 'true'})">${state.showContextQs ? 'Hide' : 'Show'} them</button></div>
+      ${state.showContextQs ? `<div class="panel-body" style="padding-top:0;">${contextQs.map((q, i) => `
+        <div class="ranked-row">
+          <span class="rank">${i + 1}</span>
+          <button class="name name-btn q-name" title="${esc(q.question)}" onclick="openQuestionDrill(${jsArg(formName)}, ${jsArg(q.question)})">${esc(q.question)}</button>
+          <span class="value bar-meta" style="width:110px;color:var(--color-neutral-500);font-weight:400;">${esc(q.type || '')}</span>
+        </div>`).join('')}</div>` : ''}` : ''}
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><div>
+        <div class="panel-title">Compliance by Region</div>
+        <div class="panel-sub">This form only &middot; scored over all targeted stores</div>
+      </div></div>
+      <div class="panel-body">${regionBars || '<div class="empty-state">No store rows for this form.</div>'}</div>
+    </div>
+
+    ${QDRILL && QDRILL.form === formName
+      ? renderQuestionDrill()
+      : `<div class="panel"><div class="panel-head"><div>
+           <div class="panel-title">Store Level Detail by Question</div>
+           <div class="panel-sub">${defaultDrillQuestion(c) ? 'Loading&hellip;' : 'No scored question on this form'}</div>
+         </div></div><div class="panel-body"><div class="empty-state">${defaultDrillQuestion(c) ? 'Loading store answers&hellip;' : 'This form has no scored question to break down by store.'}</div></div></div>`}
   `;
 }
 
@@ -928,139 +1799,16 @@ function renderQuestions(campaigns) {
   `;
 }
 
-// Columns follow the requested Store Level Detail layout. Seibel ID, Display
-// Type, Brand, Issue Detail, Issue Tracking and Image 2/3 are omitted: the
-// compliance reports carry no such fields (only a single image URL per store),
-// so there is nothing to populate them from.
-const STORE_DETAIL_COLUMNS = [
-  { key: 'region',     label: 'Region' },
-  { key: 'banner',     label: 'Banner' },
-  { key: 'promotion',  label: 'Promotion' },
-  { key: 'startDate',  label: 'Start Date' },
-  { key: 'endDate',    label: 'End Date' },
-  { key: 'rep',        label: 'Rep Name' },
-  { key: 'supervisor', label: 'Supervisor' },
-  { key: 'storeName',  label: 'Store Name' },
-  { key: 'visited',    label: 'Store Visited' },
-  { key: 'compliance', label: 'Compliance' },
-  { key: 'image',      label: 'Image 1' },
-];
-
-// Flatten every in-scope store row into one record per store/form. Shared by
-// the table and the Excel export so the file always matches what is on screen.
-function storeDetailRows(campaigns) {
-  const out = [];
-  campaigns.forEach(c => {
-    (c.storeRows || []).forEach(r => {
-      if (!matchesFilters(r, c.client)) return;
-      const visited = r.captured === 'Yes';
-      if (state.captured === 'Yes' && !visited) return;
-      if (state.captured === 'No' && visited) return;
-      out.push({
-        region: r.region || '',
-        banner: r.banner || '',
-        promotion: c.name,
-        startDate: c.periodStart || '',
-        endDate: c.periodEnd || '',
-        rep: r.rep || '',
-        supervisor: r.manager || '',
-        storeName: r.storeName || '',
-        storeCode: r.store || '',
-        visited: visited ? 'Yes' : 'No',
-        compliance: (r.compliance === null || r.compliance === undefined) ? null : r.compliance,
-        image: r.imageUrl || '',
-      });
-    });
-  });
-  if (state.search) {
-    const q = state.search.toLowerCase();
-    return out.filter(r => (r.storeName + ' ' + r.storeCode).toLowerCase().includes(q));
-  }
-  return out;
-}
-
-function setCaptured(v) { state.captured = (state.captured === v) ? 'ALL' : v; render(); }
+function setFormStatus(v) { state.formStatus = (state.formStatus === v) ? 'ALL' : v; render(); }
 
 // Excel opens CSV directly. A BOM keeps store names with accents intact, and
 // every field is quoted so commas in form names cannot shift columns.
-function exportStoreDetail() {
-  const rows = storeDetailRows(getFilteredCampaigns());
-  const q = v => '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"';
-  const lines = [STORE_DETAIL_COLUMNS.map(c => q(c.label)).join(',')];
-  for (const r of rows) {
-    lines.push(STORE_DETAIL_COLUMNS.map(c => {
-      if (c.key === 'compliance') return q(r.compliance === null ? '' : (r.compliance * 100).toFixed(1) + '%');
-      return q(r[c.key]);
-    }).join(','));
-  }
-  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'store-level-detail-' + new Date().toISOString().slice(0, 10) + '.csv';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
-}
-
-function renderStoreDetail(campaigns) {
-  const rows = storeDetailRows(campaigns);
-  const LIMIT = 500;
-
-  // Counts ignore the captured pill itself, so each pill always shows the size
-  // of what it would select rather than the size of the current selection.
-  const saved = state.captured;
-  state.captured = 'ALL';
-  const all = storeDetailRows(campaigns);
-  state.captured = saved;
-  const nCap = all.filter(r => r.visited === 'Yes').length;
-  const nUncap = all.length - nCap;
-
-  const pill = (val, label, count, tone) => `
-    <button class="filter-pill ${state.captured === val ? 'active ' + tone : tone}"
-            onclick="setCaptured('${val}')">${label} <b>${count.toLocaleString()}</b></button>`;
-
-  return `
-    <div class="panel">
-      <div class="panel-head">
-        <div><div class="panel-title">Store Level Detail</div>
-        <div class="panel-sub">${rows.length.toLocaleString()} row(s) across current filters</div></div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          ${pill('Yes', 'Captured', nCap, 'good')}
-          ${pill('No', 'Not Captured', nUncap, 'crit')}
-          <input class="search-input" placeholder="Search store…" value="${esc(state.search)}" oninput="setSearch(this.value)">
-          <button class="reset-btn" onclick="exportStoreDetail()">Export to Excel</button>
-        </div>
-      </div>
-      <div class="table-wrap"><table>
-        <thead><tr>${STORE_DETAIL_COLUMNS.map(c => `<th>${c.label}</th>`).join('')}</tr></thead>
-        <tbody>${rows.length ? rows.slice(0, LIMIT).map(r => `
-          <tr>
-            <td>${esc(r.region) || '—'}</td>
-            <td>${esc(r.banner) || '—'}</td>
-            <td class="name-cell">${esc(r.promotion)}</td>
-            <td>${esc(r.startDate) || '—'}</td>
-            <td>${esc(r.endDate) || '—'}</td>
-            <td>${esc(r.rep) || '—'}</td>
-            <td>${esc(r.supervisor) || '—'}</td>
-            <td class="name-cell">${esc(r.storeName)} <span style="color:#4a6b8a;">(${esc(r.storeCode)})</span></td>
-            <td><span class="pill ${r.visited === 'Yes' ? 'good' : 'crit'}">${r.visited}</span></td>
-            <td>${r.compliance === null ? '—' : `<span class="pill ${tierClass(pct(r.compliance))}">${fmtPct(pct(r.compliance))}</span>`}</td>
-            <td>${r.image ? `<a href="${esc(r.image)}" target="_blank" rel="noopener" style="color:var(--color-accent-300);">View</a>` : '—'}</td>
-          </tr>
-        `).join('') : `<tr><td colspan="${STORE_DETAIL_COLUMNS.length}" class="empty-state">No stores match the current filters.</td></tr>`}</tbody>
-      </table></div>
-      ${rows.length > LIMIT ? `<div class="table-note">Showing first ${LIMIT} of ${rows.length.toLocaleString()} on screen &mdash; Export to Excel includes all ${rows.length.toLocaleString()}.</div>` : ''}
-    </div>
-  `;
-}
 function renderPage(campaigns) {
   switch (state.page) {
     case 'overview': return renderOverview(campaigns);
     case 'campaigns': return renderCampaignsTable(campaigns);
     case 'pricing': return renderPricing(campaigns);
-    case 'questions': return renderQuestions(campaigns);
-    case 'notcaptured': return renderStoreDetail(campaigns);
+    case 'questions': return renderFormAnalysis(campaigns);
     default: return '';
   }
 }
@@ -1102,8 +1850,9 @@ function renderTree() {
           ${NAV_ITEMS.map(n => `<button class="nav-item ${n.id===state.page?'active':''}" onclick="setPage('${n.id}')">${navIcon(n.icon)}<span>${n.label}</span></button>`).join('')}
         </nav>
         <div class="sidebar-foot">
-          ${ACCOUNT ? `<div class="who" title="${esc(ACCOUNT.username || '')}">${esc(ACCOUNT.name || ACCOUNT.username || '')}</div>
-          <button class="signout" onclick="signOut()">Sign out</button>` : ''}
+          ${ACCOUNT && !(typeof AUTH_DISABLED !== 'undefined' && AUTH_DISABLED)
+            ? `<div class="who" title="${esc(ACCOUNT.username || '')}">${esc(ACCOUNT.name || ACCOUNT.username || '')}</div>` : ''}
+          <button class="signout" onclick="signOut()">Sign out</button>
           <div>Last updated<br><b>${genDate.toLocaleString('en-ZA', {dateStyle:'medium', timeStyle:'short'})}</b></div>
         </div>
       </aside>

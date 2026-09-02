@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
-<script src="./auth.js"></script>
+<script src="./auth.js?v=3"></script>
 <style>
   * { box-sizing:border-box; }
   html, body { margin:0; padding:0; min-height:100%; }
@@ -28,19 +28,27 @@
      reads as a distinct surface. */
   .hero {
     position:fixed; inset:0; z-index:0;
+    background-color:var(--bg);
+    /* The overlay is deliberately light: dark enough on the left to keep the
+       copy legible, close to clear over the figures on the right. */
     background-image:
-      linear-gradient(100deg, rgba(10,31,61,.94) 0%, rgba(10,31,61,.72) 34%, rgba(10,31,61,.86) 66%, rgba(10,31,61,.96) 100%),
+      linear-gradient(100deg, rgba(10,31,61,.90) 0%, rgba(10,31,61,.55) 30%, rgba(10,31,61,.10) 58%, rgba(10,31,61,.35) 100%),
       url('assets/signin-bg.jpg');
+    /* cover fills the frame at any size; anchored right so the crop eats the
+       empty left of the image rather than the figures. */
     background-size:cover, cover;
-    background-position:center, center;
+    background-position:center, right center;
+    background-repeat:no-repeat, no-repeat;
   }
 
   .page { position:relative; z-index:1; min-height:100vh; display:flex; flex-direction:column;
     padding:30px clamp(22px,4vw,54px) 20px; }
 
-  .wordmark { font-size:15px; font-weight:700; letter-spacing:.16em; color:var(--brand-blue); }
+  /* .page is a column flexbox, so a bare img stretches to the full cross-axis
+     width. align-self keeps it at its natural size. */
+  .wordmark { height:64px; width:auto; align-self:flex-start; flex:0 0 auto; object-fit:contain; }
 
-  .grid { flex:1; display:grid; grid-template-columns:minmax(0,1.15fr) minmax(360px,540px);
+  .grid { flex:1; display:grid; grid-template-columns:minmax(0,1.6fr) minmax(280px,340px);
     gap:clamp(28px,5vw,72px); align-items:center; padding:26px 0 34px; }
 
   /* ---- left column ---- */
@@ -57,16 +65,16 @@
   .hex { width:52px; height:52px; display:block; }
 
   /* ---- sign-in card ---- */
-  .card { background:color-mix(in srgb, var(--card) 88%, transparent);
-    border:1px solid var(--card-border); border-radius:16px; padding:38px 34px 30px;
-    box-shadow:0 30px 70px rgba(0,0,0,.42); backdrop-filter:blur(3px); }
-  .card-mark { width:58px; height:58px; margin:0 auto 16px; display:block; object-fit:contain; }
-  .card h2 { text-align:center; font-size:21px; font-weight:700; margin:0 0 5px; }
+  .card { background:color-mix(in srgb, var(--card) 95%, transparent);
+    border:1px solid var(--card-border); border-radius:14px; padding:28px 24px 22px;
+    box-shadow:0 30px 70px rgba(0,0,0,.55); backdrop-filter:blur(8px) saturate(1.1); }
+  .card-mark { width:50px; height:50px; margin:0 auto 14px; display:block; object-fit:contain; }
+  .card h2 { text-align:center; font-size:19px; font-weight:700; margin:0 0 5px; }
   .card .sub { text-align:center; font-size:13px; color:var(--dim); margin-bottom:26px; }
   .divider { height:1px; background:var(--card-border); margin:0 0 24px; }
 
   .ms-btn { width:100%; display:inline-flex; align-items:center; justify-content:center; gap:11px;
-    background:#fff; border:none; border-radius:9px; padding:15px 18px; cursor:pointer;
+    background:#fff; border:none; border-radius:9px; padding:13px 18px; cursor:pointer;
     color:#1b1b1f; font-family:inherit; font-size:14px; font-weight:600;
     transition:transform .12s ease, box-shadow .12s ease; }
   .ms-btn:hover { transform:translateY(-1px); box-shadow:0 8px 22px rgba(0,0,0,.3); }
@@ -75,7 +83,7 @@
 
   .foot-note { margin-top:20px; text-align:center; font-size:11.5px; color:var(--dim); }
 
-  .msg { margin-top:18px; padding:11px 13px; border-radius:9px; font-size:11.5px; line-height:1.55; display:none; }
+  .msg { margin-top:14px; padding:9px 11px; border-radius:8px; font-size:11px; line-height:1.5; display:none; text-align:center; }
   .msg.error { background:rgba(228,87,76,.13); border:1px solid rgba(228,87,76,.42); color:#ffb4ad; }
   .msg.info { background:rgba(143,184,232,.1); border:1px solid var(--card-border); color:#c9dcf2; }
   .msg a { color:var(--accent-300); font-weight:600; }
@@ -102,7 +110,7 @@
 <div class="hero"></div>
 
 <div class="page">
-  <div class="wordmark">MERIDIAN GROUP</div>
+  <img class="wordmark" src="assets/meridian-logo.png" alt="Meridian Group">
 
   <div class="grid">
     <!-- ---------- left: proposition ---------- -->
@@ -153,8 +161,8 @@
       <div class="divider"></div>
 
       <button class="ms-btn" id="signin">
-        <svg viewBox="0 0 23 23" aria-hidden="true"><path fill="#f25022" d="M1 1h10v10H1z"/><path fill="#7fba00" d="M12 1h10v10H12z"/><path fill="#00a4ef" d="M1 12h10v10H1z"/><path fill="#ffb900" d="M12 12h10v10H12z"/></svg>
-        Sign in with Microsoft
+        <svg id="ms-logo" viewBox="0 0 23 23" aria-hidden="true"><path fill="#f25022" d="M1 1h10v10H1z"/><path fill="#7fba00" d="M12 1h10v10H12z"/><path fill="#00a4ef" d="M1 12h10v10H12z"/><path fill="#ffb900" d="M12 12h10v10H12z"/></svg>
+        <span id="signin-label">Sign in with Microsoft</span>
       </button>
 
       <div class="msg error" id="err"></div>
@@ -185,11 +193,15 @@
     // Local dev bypasses auth entirely, as the Call Cycle portal does. Say so
     // plainly rather than implying a sign-in took place.
     if (isLocalDev()) {
-      dev.innerHTML = 'Running locally &mdash; authentication is bypassed on <b>'
-        + (location.hostname || 'file://') + '</b>. <a href="index.html">Continue to the dashboard &rarr;</a>';
-      dev.style.display = 'block';
-      btn.innerHTML = 'Continue to dashboard';
+      const label = document.getElementById('signin-label');
+      const logo = document.getElementById('ms-logo');
+      if (logo) logo.style.display = 'none';
+      if (label) label.textContent = 'Continue to dashboard';
       btn.onclick = function () { location.href = 'index.html'; };
+      dev.innerHTML = typeof AUTH_DISABLED !== 'undefined' && AUTH_DISABLED
+        ? 'Sign-in is off while this is in review.'
+        : 'Running locally on <b>' + (location.hostname || 'file://') + '</b>, so authentication is bypassed.';
+      dev.style.display = 'block';
       return;
     }
 

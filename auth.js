@@ -21,11 +21,23 @@ const SHAREPOINT_SITE_PATH = "sites/MeridianNexus";
 // Folder inside "Shared Documents" that extract_compliance_data.py writes to.
 const DATA_FOLDER = "Capture/Capture/Dashboard";
 
+// ---------------------------------------------------------------------------
+// AUTH_DISABLED: set true only to review the UI without signing in. While true
+// the dashboard reads compliance_data.json.gz from next to index.html instead
+// of pulling it from SharePoint with the user's token -- which means the data
+// would have to be published with the page. Never deploy it true.
+//
+// False (live): every visitor signs in with their Meridian account and the
+// payload is fetched from SharePoint with their own token, so no store-level
+// data sits in the repo. localhost still bypasses sign-in for development.
+// ---------------------------------------------------------------------------
+const AUTH_DISABLED = false;
+
 // Served from localhost/127.0.0.1 -> skip real auth and read the local JSON,
 // exactly as the Call Cycle portal does. Only a deployed origin requires a real
 // Microsoft sign-in and pulls data from SharePoint.
 function isLocalDev() {
-  return ["localhost", "127.0.0.1", ""].includes(location.hostname);
+  return AUTH_DISABLED || ["localhost", "127.0.0.1", ""].includes(location.hostname);
 }
 
 let msalInstance = null;
@@ -57,6 +69,12 @@ async function signIn() {
 }
 
 async function signOut() {
+  // With auth off there is no session to end, so the honest behaviour is to
+  // return to the login screen rather than pretend a sign-out happened.
+  if (AUTH_DISABLED) {
+    location.href = location.pathname.replace(/[^/]*$/, "") + "login.html";
+    return;
+  }
   if (isLocalDev()) { location.reload(); return; }
   const inst = getMsalInstance();
   const account = inst.getAllAccounts()[0];
