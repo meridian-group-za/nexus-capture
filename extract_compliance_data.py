@@ -515,6 +515,46 @@ def main():
         "campaigns": results,
         "errors": errors,
     }
+    # Headline figures for the Nexus portal overview. The full payload is ~2 MB
+    # gzipped and the landing page only needs a handful of numbers, so publish
+    # them separately rather than making every visit inflate the lot.
+    #
+    # Coverage is split by whether the period has ended. Campaigns still running
+    # are mid-collection by definition, so blending them into one number makes
+    # normal progress look like a failure.
+    def _num(v):
+        return v if isinstance(v, (int, float)) else 0
+
+    def summarise(rows):
+        target = sum(_num(r["target"]) for r in rows)
+        captured = sum(_num(r["captured"]) for r in rows)
+        scored = [r for r in rows if r.get("compliance") is not None]
+        weight = sum(_num(r["captured"]) for r in scored)
+        blended = sum(_num(r["compliance"]) * _num(r["captured"]) for r in scored)
+        return {
+            "forms": len(rows),
+            "target": target,
+            "captured": captured,
+            "coverage": (captured / target) if target else None,
+            "compliance": (blended / weight) if weight else None,
+            "notCaptured": sum(_num(r["notCaptured"]) for r in rows),
+        }
+
+    today = datetime.now().date().isoformat()
+    complete = [r for r in results if r["status"] == "complete"]
+    ended = [r for r in complete if (r.get("periodEnd") or "") < today]
+    in_period = [r for r in complete if (r.get("periodEnd") or "") >= today]
+    summary = {
+        "generatedAt": out["generatedAt"],
+        "formsTotal": len(results),
+        "formsComplete": len(complete),
+        "formsPending": sum(1 for r in results if r["status"] == "pending"),
+        "clients": len({r["client"] for r in results}),
+        "ended": summarise(ended),
+        "inPeriod": summarise(in_period),
+    }
+    SUMMARY_NAME = "capture_summary.json"
+
     # Written gzipped. The payload compresses ~90%, and neither python's
     # http.server nor SharePoint/Graph applies transport compression to a .json
     # file, so compressing the file itself is the only way to get the win on
@@ -524,6 +564,11 @@ def main():
             json.dump(obj, f, separators=(",", ":"), default=str)
 
     write_json_gz(OUT_PATH + ".gz", out)
+
+    summary_path = os.path.join(os.path.dirname(__file__), SUMMARY_NAME)
+    with open(summary_path, "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=1, default=str)
+
 
     # Per-form question files, written next to the payload in both locations.
     local_q_dir = os.path.join(os.path.dirname(__file__), QUESTIONS_SUBFOLDER)
@@ -537,6 +582,7 @@ def main():
     try:
         os.makedirs(os.path.join(PUBLISH_FOLDER, QUESTIONS_SUBFOLDER), exist_ok=True)
         shutil.copy2(OUT_PATH + ".gz", os.path.join(PUBLISH_FOLDER, "compliance_data.json.gz"))
+        shutil.copy2(summary_path, os.path.join(PUBLISH_FOLDER, SUMMARY_NAME))
         for fname, _ in pending_question_files:
             shutil.copy2(os.path.join(local_q_dir, fname + ".gz"),
                          os.path.join(PUBLISH_FOLDER, QUESTIONS_SUBFOLDER, fname + ".gz"))
