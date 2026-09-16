@@ -87,7 +87,27 @@ async function requireAuth() {
   if (isLocalDev()) return getAccount();
   const inst = getMsalInstance();
   await inst.handleRedirectPromise();
-  const account = inst.getAllAccounts()[0];
+  let account = inst.getAllAccounts()[0];
+
+  // Nothing cached for THIS origin does not mean the person is signed
+  // out. MSAL caches per app registration and per origin, so someone who
+  // signed into another Meridian dashboard a minute ago still lands here
+  // with an empty cache and gets a login screen they do not need.
+  //
+  // ssoSilent asks Entra to reuse the session it already has, in a hidden
+  // iframe, with no prompt. It fails in ordinary circumstances -- no
+  // session, more than one account, or a browser blocking third-party
+  // cookies -- so the login page stays exactly as the fallback rather
+  // than being replaced by it.
+  if (!account) {
+    try {
+      const sso = await inst.ssoSilent({ scopes: GRAPH_SCOPES });
+      if (sso && sso.account) account = sso.account;
+    } catch (e) {
+      account = null;
+    }
+  }
+
   if (!account) {
     location.replace(location.pathname.replace(/[^/]*$/, "") + "login.html");
     return new Promise(function () {});
