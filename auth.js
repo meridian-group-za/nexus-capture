@@ -50,7 +50,10 @@ function getMsalInstance() {
         authority: "https://login.microsoftonline.com/" + MSAL_CONFIG.tenantId,
         redirectUri: MSAL_CONFIG.redirectUri,
       },
-      cache: { cacheLocation: "sessionStorage" },
+      // localStorage, not sessionStorage: the portal opens every dashboard in a
+  // new tab, and sessionStorage is empty in a new tab by definition - so the
+  // sign-in never carried over and each dashboard asked again.
+      cache: { cacheLocation: "localStorage" },
     });
   }
   return msalInstance;
