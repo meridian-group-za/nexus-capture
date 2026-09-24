@@ -1936,6 +1936,10 @@ requireAuth()
 
   function place() {
     var side = sidebar();
+    // Re-create when it is missing OR has been detached: these pages re-render
+    // their whole body, which quietly takes our node with it while the variable
+    // still points at it.
+    if (link && !document.body.contains(link)) link = null;
     if (!link) {
       link = document.createElement("a");
       link.id = "nx-back";
