@@ -1884,7 +1884,7 @@ requireAuth()
 </script>
 
 <script>
-// "Back to Nexus" in the sidebar, above the footer.
+// "Back to Nexus", placed in the dashboard's own sidebar.
 //
 // ?from= says which module view to return to. Without one we still go to the
 // portal, just to its overview. Anything that is not the portal itself is
@@ -1900,25 +1900,54 @@ requireAuth()
     if (asked && asked.indexOf(NEXUS) === 0) from = asked;
   } catch (e) { /* keep the default */ }
 
-  function footerAnchor() {
-    // "Last updated" if the dashboard has one, otherwise whatever it calls the
-    // way out - Capture says "Sign out", the others "Log out".
-    var all = document.querySelectorAll("div,a,button,span,p");
-    var out = null;
-    for (var i = 0; i < all.length; i++) {
-      var el = all[i];
+  // The nav column: tall, narrow, pinned, and holding several links. Measured
+  // rather than guessed from markup, because these dashboards build their
+  // sidebars differently - aside, nav, or a plain div.
+  function findSidebar() {
+    var best = null;
+    var nodes = document.querySelectorAll("aside,nav,div");
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      var box = el.getBoundingClientRect();
+      if (box.width < 120 || box.width > 420) continue;
+      if (box.height < window.innerHeight * 0.6) continue;
+      if (box.left > window.innerWidth * 0.25) continue;
+      var pos = window.getComputedStyle(el).position;
+      if (pos !== "sticky" && pos !== "fixed" && box.height < window.innerHeight * 0.9) continue;
+      if (el.querySelectorAll("a,button").length < 2) continue;
+      // the innermost column that still qualifies
+      if (!best || el.contains(best) === false) best = el;
+    }
+    return best;
+  }
+
+  // Inside the sidebar: above its footer if it has one, otherwise at the end.
+  function placeIn(sidebar, link) {
+    var candidates = sidebar.querySelectorAll("div,a,button,span,p");
+    for (var i = 0; i < candidates.length; i++) {
+      var el = candidates[i];
       if (el.children.length > 2) continue;
       var txt = (el.textContent || "").trim();
-      if (/^last updated/i.test(txt) && txt.length < 60) return el;
-      if (!out && /^(log|sign) ?out$/i.test(txt)) out = el;
+      if (/^(last updated|data refreshed)/i.test(txt) && txt.length < 60) {
+        if (el.parentNode) { el.parentNode.insertBefore(link, el); return true; }
+      }
     }
-    return out;
+    for (var j = 0; j < candidates.length; j++) {
+      var e2 = candidates[j];
+      if (e2.children.length > 2 && !/^(log|sign) ?out$/i.test((e2.textContent || "").trim())) continue;
+      if (/^(log|sign) ?out$/i.test((e2.textContent || "").trim()) && e2.parentNode) {
+        e2.parentNode.insertBefore(link, e2);
+        return true;
+      }
+    }
+    sidebar.appendChild(link);
+    return true;
   }
 
   function add() {
     if (document.getElementById("nx-back")) return true;
-    var anchor = footerAnchor();
-    if (!anchor || !anchor.parentNode) return false;
+    var sidebar = findSidebar();
+    if (!sidebar) return false;
 
     var a = document.createElement("a");
     a.id = "nx-back";
@@ -1939,37 +1968,28 @@ requireAuth()
       a.style.background = "rgba(236,109,37,0.12)";
     });
 
-    // Climb out of any single-child wrappers so the link lands beside the
-    // footer rather than inside it - but never past the top, or we would be
-    // reaching for a parent that is not there.
-    var target = anchor;
-    while (target.parentNode && target.parentNode.parentNode &&
-           target.parentNode.children.length === 1) {
-      target = target.parentNode;
-    }
-    if (!target.parentNode) return false;
-    target.parentNode.insertBefore(a, target);
-    return true;
+    return placeIn(sidebar, a);
   }
 
-  // Watch for the life of the page, not just until the first success: the
-  // sidebar is rebuilt on navigation and takes the link with it. Debounced so
-  // that our own insert does not re-trigger the observer in a loop.
   var pending = false;
   function schedule() {
     if (pending) return;
     pending = true;
-    setTimeout(function () { pending = false; add(); }, 60);
+    setTimeout(function () { pending = false; add(); }, 80);
   }
 
   function start() {
     add();
+    // The sidebar may not be laid out yet on first paint, and is rebuilt on
+    // navigation - so try again for a while, then keep watching.
+    var tries = 0;
+    var timer = setInterval(function () {
+      if (add() || ++tries > 40) clearInterval(timer);
+    }, 250);
     if (window.MutationObserver) {
       new MutationObserver(function () {
         if (!document.getElementById("nx-back")) schedule();
       }).observe(document.body, { childList: true, subtree: true });
-    } else {
-      setInterval(function () { add(); }, 1000);
     }
   }
 
