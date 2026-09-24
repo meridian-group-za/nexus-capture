@@ -8,27 +8,45 @@
 // throws interaction_in_progress and the dashboard sticks on the sign-in
 // screen until the tab is closed.
 //
-// A genuine in-flight interaction leaves the page and returns with its
-// response in the URL. So on a load with no auth response present, any flag
-// left behind is stale and safe to drop. Runs in <head>, before MSAL, so the
-// flag is gone before anything reads it.
+// Clearing it on sight was too eager, and broke the thing it was meant to
+// help: MSAL's redirect comes back, consumes the response, then navigates to
+// a CLEAN url and finishes the sign-in on that load - still holding this
+// marker. Clearing it there cut the sign-in off at the last step.
+//
+// So we time it instead. The first load that sees the marker records when it
+// saw it and leaves it alone; only a marker still present a minute later is
+// treated as stranded. A real interaction finishes in seconds, so this waits
+// out the genuine case and still rescues the stuck tab.
 (function () {
+  var SEEN = "nx.msalFlagSeen";
+  var GRACE = 60000;
   try {
     var here = window.location.hash + window.location.search;
     // An actual redirect coming back carries one of these.
-    if (/[#&?](code|error|id_token|access_token|state)=/.test(here)) return;
+    if (/[#&?](code|error|id_token|access_token|state)=/.test(here)) {
+      sessionStorage.removeItem(SEEN);
+      return;
+    }
 
     var stale = [];
     for (var i = 0; i < sessionStorage.length; i++) {
       var k = sessionStorage.key(i);
       if (k && k.indexOf("interaction.status") !== -1) stale.push(k);
     }
+    if (!stale.length) { sessionStorage.removeItem(SEEN); return; }
+
+    var seen = parseInt(sessionStorage.getItem(SEEN) || "0", 10);
+    if (!seen) { sessionStorage.setItem(SEEN, String(Date.now())); return; }
+    if (Date.now() - seen < GRACE) return;
+
     for (var j = 0; j < stale.length; j++) sessionStorage.removeItem(stale[j]);
+    sessionStorage.removeItem(SEEN);
   } catch (e) {
     /* private mode or blocked storage - nothing to clear */
   }
 })();
 </script>
+
 <meta charset="utf-8">
 <title>Capture Compliance</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
