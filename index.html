@@ -1887,39 +1887,79 @@ requireAuth()
 // "Back to Nexus", shown only when the portal sent you here and said where to
 // return to. The destination is checked against the portal's own URL: taking
 // an arbitrary ?from= on trust is an open redirect waiting to happen.
+//
+// Placed inside the sidebar, above the footer, rather than floated in a
+// corner - these dashboards have a full-height sticky sidebar, so every corner
+// already belongs to something (logo, Log out, sticky header).
 (function () {
   var NEXUS = "https://meridian-group-za.github.io/Meridian-Nexus/portal.html";
   var from;
   try { from = new URLSearchParams(window.location.search).get("from"); } catch (e) { return; }
   if (!from || from.indexOf(NEXUS) !== 0) return;
 
+  function footerAnchor() {
+    // The footer block: "Last updated" if the dashboard has one, otherwise the
+    // Log out control. Either way we insert immediately above it.
+    var all = document.querySelectorAll("div,a,button,span,p");
+    var logout = null;
+    for (var i = 0; i < all.length; i++) {
+      var el = all[i];
+      if (el.children.length > 2) continue;
+      var txt = (el.textContent || "").trim();
+      if (/^last updated/i.test(txt) && txt.length < 60) return el;
+      if (!logout && /^log ?out$/i.test(txt)) logout = el;
+    }
+    return logout;
+  }
+
   function add() {
     if (document.getElementById("nx-back")) return;
+    var anchor = footerAnchor();
+    if (!anchor || !anchor.parentNode) return;
+
     var a = document.createElement("a");
     a.id = "nx-back";
     a.href = from;
-    a.textContent = "\\u2190 Nexus";
+    a.textContent = "\u2190 Back to Nexus";
     a.title = "Back to the Meridian Nexus portal";
     a.style.cssText = [
-      "position:fixed", "bottom:18px", "right:18px", "z-index:99999",
-      "display:inline-flex", "align-items:center", "gap:5px",
-      "padding:6px 11px", "border-radius:8px",
-      "background:rgba(10,24,46,0.82)", "border:1px solid rgba(236,109,37,0.35)",
-      "color:#f2955c", "font:600 11px/1 Poppins,Segoe UI,system-ui,sans-serif",
-      "text-decoration:none", "cursor:pointer", "opacity:0.72",
-      "box-shadow:0 2px 10px rgba(0,0,0,0.35)",
-      "transition:opacity .15s ease",
-      "backdrop-filter:blur(6px)", "-webkit-backdrop-filter:blur(6px)"
+      "display:block", "margin:14px 14px 4px", "padding:10px 14px",
+      "border-radius:10px", "text-align:left",
+      "background:rgba(236,109,37,0.12)", "border:1px solid rgba(236,109,37,0.38)",
+      "color:#f2955c", "font:600 13px/1.2 Poppins,Segoe UI,system-ui,sans-serif",
+      "text-decoration:none", "cursor:pointer"
     ].join(";");
-    a.addEventListener("mouseenter", function () { a.style.opacity = "1"; });
-    a.addEventListener("mouseleave", function () { a.style.opacity = "0.72"; });
-    document.body.appendChild(a);
+    a.addEventListener("mouseenter", function () {
+      a.style.background = "rgba(236,109,37,0.2)";
+    });
+    a.addEventListener("mouseleave", function () {
+      a.style.background = "rgba(236,109,37,0.12)";
+    });
+
+    // Above the footer block, which is where the gap under the nav sits.
+    var target = anchor;
+    while (target.parentNode && target.parentNode.children.length === 1) {
+      target = target.parentNode;
+    }
+    target.parentNode.insertBefore(a, target);
+  }
+
+  // These dashboards render their sidebar from JS, so the footer may not exist
+  // yet on DOMContentLoaded. Watch briefly, then stop - no permanent observer.
+  function watch() {
+    add();
+    if (document.getElementById("nx-back")) return;
+    var tries = 0;
+    var timer = setInterval(function () {
+      add();
+      if (document.getElementById("nx-back") || ++tries > 40) clearInterval(timer);
+    }, 250);
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", add);
+    document.addEventListener("DOMContentLoaded", watch);
   } else {
-    add();
+    watch();
   }
 })();
 </script>
