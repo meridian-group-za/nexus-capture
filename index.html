@@ -1884,15 +1884,16 @@ requireAuth()
 </script>
 
 <script>
-// "Back to Nexus", parked over the dashboard's own sidebar.
+// "Back to Nexus", inserted into the dashboard's own sidebar.
 //
 // ?from= says which module view to return to. Without one it goes to the
 // portal's overview. Anything that is not the portal itself is ignored rather
 // than followed - an unchecked ?from= is an open redirect.
 //
-// It lives on document.body and is positioned to line up with the sidebar,
-// because these dashboards re-render their sidebar on navigation and would
-// throw away anything placed inside it.
+// It is a real element in the sidebar, not a floating one, so the layout makes
+// room for it instead of it covering the footer. Because these dashboards
+// re-render and throw it away, its presence is re-checked every second - it is
+// not enough to have created it once.
 (function () {
   var NEXUS = "https://meridian-group-za.github.io/Meridian-Nexus/portal.html";
   var from = NEXUS;
@@ -1901,8 +1902,13 @@ requireAuth()
     if (asked && asked.indexOf(NEXUS) === 0) from = asked;
   } catch (e) { /* keep the default */ }
 
-  var link = null;
+  function visible(el) {
+    var r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  }
 
+  // The nav column: tall, narrow, down the left, holding several links.
+  // Measured rather than guessed - these dashboards use aside, nav and div.
   function sidebar() {
     var nodes = document.querySelectorAll("aside,nav,div");
     for (var i = 0; i < nodes.length; i++) {
@@ -1917,78 +1923,75 @@ requireAuth()
     return null;
   }
 
-  // The footer inside it - "Last updated", "Log out", "Sign out" - so we can
-  // sit just above whatever the dashboard puts at the bottom.
-  function footerTop(side) {
-    var best = null;
+  // The footer to sit above: "Last updated", "Data as at", "Log out". Hidden
+  // copies are skipped - they report a zero-size rect and are not where the
+  // user sees anything.
+  function footer(side) {
     var nodes = side.querySelectorAll("div,a,button,span,p");
+    var out = null;
     for (var i = 0; i < nodes.length; i++) {
       var el = nodes[i];
       if (el.children.length > 2) continue;
+      if (!visible(el)) continue;
       var txt = (el.textContent || "").trim();
-      if (!/^(last updated|data refreshed|log ?out|sign ?out)/i.test(txt)) continue;
       if (txt.length > 60) continue;
-      var fr = el.getBoundingClientRect();
-      // A hidden element reports an all-zero rect. Taking it as "topmost" put
-      // the button at -52px, just off the top of the screen - present in the
-      // DOM, invisible on the page.
-      if (fr.width === 0 || fr.height === 0) continue;
-      if (best === null || fr.top < best) best = fr.top;
+      if (/^(last updated|data refreshed|data as at|updated )/i.test(txt)) return el;
+      if (!out && /^(log|sign) ?out$/i.test(txt)) out = el;
     }
-    return best;
+    return out;
   }
 
-  function place() {
+  function make() {
+    var a = document.createElement("a");
+    a.id = "nx-back";
+    a.href = from;
+    a.textContent = "← Back to Nexus";
+    a.title = "Back to the Meridian Nexus portal";
+    a.style.cssText = [
+      "display:block", "margin:14px 14px 10px", "padding:10px 14px",
+      "border-radius:10px", "text-align:center", "box-sizing:border-box",
+      "background:rgba(236,109,37,0.12)", "border:1px solid rgba(236,109,37,0.38)",
+      "color:#f2955c", "font:600 13px/1.2 Poppins,Segoe UI,system-ui,sans-serif",
+      "text-decoration:none", "cursor:pointer", "flex:none"
+    ].join(";");
+    a.addEventListener("mouseenter", function () {
+      a.style.background = "rgba(236,109,37,0.2)";
+    });
+    a.addEventListener("mouseleave", function () {
+      a.style.background = "rgba(236,109,37,0.12)";
+    });
+    return a;
+  }
+
+  function add() {
+    // Still there? Nothing to do. Note this asks whether it is IN the document,
+    // not whether we once made one - a re-render detaches it silently.
+    var existing = document.getElementById("nx-back");
+    if (existing && document.body.contains(existing)) return;
+
     var side = sidebar();
-    // Re-create when it is missing OR has been detached: these pages re-render
-    // their whole body, which quietly takes our node with it while the variable
-    // still points at it.
-    if (link && !document.body.contains(link)) link = null;
-    if (!link) {
-      link = document.createElement("a");
-      link.id = "nx-back";
-      link.textContent = "\u2190 Back to Nexus";
-      link.title = "Back to the Meridian Nexus portal";
-      link.href = from;
-      link.style.cssText = [
-        "position:fixed", "z-index:2147483000", "box-sizing:border-box",
-        "padding:10px 14px", "border-radius:10px", "text-align:center",
-        "background:rgba(236,109,37,0.12)", "border:1px solid rgba(236,109,37,0.38)",
-        "color:#f2955c", "font:600 13px/1.2 Poppins,Segoe UI,system-ui,sans-serif",
-        "text-decoration:none", "cursor:pointer", "display:none"
-      ].join(";");
-      link.addEventListener("mouseenter", function () {
-        link.style.background = "rgba(236,109,37,0.2)";
-      });
-      link.addEventListener("mouseleave", function () {
-        link.style.background = "rgba(236,109,37,0.12)";
-      });
-      document.body.appendChild(link);
+    if (!side) return;
+    var foot = footer(side);
+    var a = make();
+    if (foot && foot.parentNode) {
+      // Climb out of single-child wrappers so we land beside the footer block,
+      // not inside it - but never past the sidebar itself.
+      var target = foot;
+      while (target.parentNode && target.parentNode !== side &&
+             target.parentNode.children.length === 1) {
+        target = target.parentNode;
+      }
+      target.parentNode.insertBefore(a, target);
+    } else {
+      side.appendChild(a);
     }
-    if (!side) { link.style.display = "none"; return; }
-
-    var r = side.getBoundingClientRect();
-    var top = footerTop(side);
-    // 14px inset each side, and 10px of clearance above the footer. With no
-    // footer to find, sit near the bottom of the sidebar instead.
-    var want = (top === null ? r.bottom - 56 : top - 52);
-    // Never above the sidebar's own top, never below the window.
-    var lo = Math.max(r.top + 8, 8);
-    var hi = Math.min(r.bottom, window.innerHeight) - 48;
-    if (hi < lo) hi = lo;
-    link.style.left = (r.left + 14) + "px";
-    link.style.width = (r.width - 28) + "px";
-    link.style.top = Math.min(Math.max(want, lo), hi) + "px";
-    link.style.display = "block";
   }
 
-  function safePlace() { try { place(); } catch (e) { /* never kill the timer */ } }
+  function safeAdd() { try { add(); } catch (e) { /* never kill the timer */ } }
 
   function start() {
-    setInterval(safePlace, 1000);
-    safePlace();
-    window.addEventListener("resize", safePlace);
-    window.addEventListener("scroll", safePlace, true);
+    setInterval(safeAdd, 1000);
+    safeAdd();
   }
 
   if (document.readyState === "loading") {
