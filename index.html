@@ -1916,6 +1916,7 @@ requireAuth()
 
 
 
+
 <script>
 // Take over the dashboard's own Log out / Sign out control and make it
 // "Back to Nexus".
@@ -1939,7 +1940,10 @@ requireAuth()
     if (el.getAttribute("data-nx-back") === "1") return false;
     if (el.querySelector("[data-nx-back]")) return false;
     var txt = (el.textContent || "").trim();
-    if (!/^(log|sign) ?out$/i.test(txt)) return false;
+    // Log out / Sign out on most of these. Inventory has neither - its
+    // equivalent bottom-of-nav control is "Collapse Navigation", which Carin
+    // asked to use there instead.
+    if (!/^((log|sign) ?out|collapse navigation)$/i.test(txt)) return false;
     var r = el.getBoundingClientRect();
     return r.width > 0 && r.height > 0;   // skip hidden copies
   }
