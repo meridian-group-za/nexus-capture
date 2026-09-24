@@ -1884,5 +1884,161 @@ requireAuth()
 </script>
 
 
+<script>
+// "Back to Nexus".
+//
+// ?from= says which module view to return to; anything that is not the portal
+// is ignored rather than followed, since an unchecked ?from= is an open
+// redirect.
+//
+// Two placements, chosen per page rather than assumed:
+//   flow  - a real element in the sidebar. Looks right, reserves its own space.
+//   fixed - pinned over the foot of the sidebar, on document.body.
+// Some of these dashboards are Vue apps whose sidebar is a v-for, and Vue
+// deletes anything it did not render. So we start in flow, and if the page
+// removes the button twice we switch that page to fixed for good.
+(function () {
+  var NEXUS = "https://meridian-group-za.github.io/Meridian-Nexus/portal.html";
+  var GAP = 58;
+  var from = NEXUS;
+  try {
+    var asked = new URLSearchParams(window.location.search).get("from");
+    if (asked && asked.indexOf(NEXUS) === 0) from = asked;
+  } catch (e) { /* keep the default */ }
+
+  var mode = "flow";
+  var evictions = 0;
+  var placed = false;
+
+  function sidebar() {
+    var nodes = document.querySelectorAll("aside,nav,div");
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      var r = el.getBoundingClientRect();
+      if (r.width < 120 || r.width > 420) continue;
+      if (r.height < window.innerHeight * 0.6) continue;
+      if (r.left > window.innerWidth * 0.25) continue;
+      if (el.querySelectorAll("a,button").length < 1) continue;
+      return el;
+    }
+    return null;
+  }
+
+  // Hidden elements report an all-zero rect; taking one as the topmost footer
+  // once positioned the button at -52px, off the top of the screen.
+  function footer(side) {
+    var nodes = side.querySelectorAll("div,a,button,span,p");
+    var out = null;
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (el.children.length > 2) continue;
+      var r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) continue;
+      var txt = (el.textContent || "").trim();
+      if (txt.length > 60) continue;
+      if (/^(last updated|data refreshed|data as at|updated )/i.test(txt)) return el;
+      if (!out && /^(log|sign) ?out$/i.test(txt)) out = el;
+    }
+    return out;
+  }
+
+  // Set with priority: Sales Insights styles its <a> tags, which stretched an
+  // earlier version of this button into a column down the whole page.
+  function style(a, pairs) {
+    for (var k in pairs) {
+      if (Object.prototype.hasOwnProperty.call(pairs, k)) {
+        a.style.setProperty(k, pairs[k], "important");
+      }
+    }
+  }
+
+  function build() {
+    var a = document.createElement("a");
+    a.id = "nx-back";
+    a.href = from;
+    a.textContent = "\u2190 Back to Nexus";
+    a.title = "Back to the Meridian Nexus portal";
+    style(a, {
+      "box-sizing": "border-box", "padding": "10px 14px", "border-radius": "10px",
+      "text-align": "center", "background": "rgba(236,109,37,0.12)",
+      "border": "1px solid rgba(236,109,37,0.38)", "color": "#f2955c",
+      "font": "600 13px/1.2 Poppins,Segoe UI,system-ui,sans-serif",
+      "text-decoration": "none", "cursor": "pointer", "height": "auto",
+      "min-height": "0", "max-height": "none", "flex": "none", "transform": "none"
+    });
+    a.addEventListener("mouseenter", function () {
+      a.style.setProperty("background", "rgba(236,109,37,0.2)", "important");
+    });
+    a.addEventListener("mouseleave", function () {
+      a.style.setProperty("background", "rgba(236,109,37,0.12)", "important");
+    });
+    return a;
+  }
+
+  function tick() {
+    var here = document.getElementById("nx-back");
+    var live = here && document.body.contains(here);
+
+    if (!live && placed && mode === "flow") {
+      // The page threw it away. Once can be a coincidence; twice is Vue.
+      if (++evictions >= 2) mode = "fixed";
+    }
+
+    var side = sidebar();
+    if (!side) {
+      if (live) here.style.setProperty("display", "none", "important");
+      return;
+    }
+
+    if (mode === "fixed") {
+      if (!live) { here = build(); document.body.appendChild(here); placed = true; }
+      // Reserve the strip we sit in, so the footer is never covered.
+      if (side.style.paddingBottom !== GAP + "px") {
+        side.style.paddingBottom = GAP + "px";
+      }
+      var r = side.getBoundingClientRect();
+      var bottom = Math.min(r.bottom, window.innerHeight);
+      style(here, {
+        "position": "fixed", "z-index": "2147483000", "display": "block",
+        "left": (r.left + 14) + "px", "width": (r.width - 28) + "px",
+        "top": (bottom - GAP + 8) + "px"
+      });
+      return;
+    }
+
+    if (live) { here.style.setProperty("display", "block", "important"); return; }
+
+    var a = build();
+    style(a, { "display": "block", "margin": "14px 14px 10px",
+               "position": "static", "width": "auto" });
+    var foot = footer(side);
+    if (foot && foot.parentNode) {
+      var target = foot;
+      while (target.parentNode && target.parentNode !== side &&
+             target.parentNode.children.length === 1) {
+        target = target.parentNode;
+      }
+      target.parentNode.insertBefore(a, target);
+    } else {
+      side.appendChild(a);
+    }
+    placed = true;
+  }
+
+  function safeTick() { try { tick(); } catch (e) { /* never kill the timer */ } }
+
+  function start() {
+    setInterval(safeTick, 1000);
+    window.addEventListener("resize", safeTick);
+    safeTick();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
+  }
+})();
+</script>
 </body>
 </html>
