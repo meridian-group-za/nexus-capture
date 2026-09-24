@@ -1928,8 +1928,12 @@ requireAuth()
       var txt = (el.textContent || "").trim();
       if (!/^(last updated|data refreshed|log ?out|sign ?out)/i.test(txt)) continue;
       if (txt.length > 60) continue;
-      var top = el.getBoundingClientRect().top;
-      if (best === null || top < best) best = top;
+      var fr = el.getBoundingClientRect();
+      // A hidden element reports an all-zero rect. Taking it as "topmost" put
+      // the button at -52px, just off the top of the screen - present in the
+      // DOM, invisible on the page.
+      if (fr.width === 0 || fr.height === 0) continue;
+      if (best === null || fr.top < best) best = fr.top;
     }
     return best;
   }
@@ -1967,17 +1971,24 @@ requireAuth()
     var top = footerTop(side);
     // 14px inset each side, and 10px of clearance above the footer. With no
     // footer to find, sit near the bottom of the sidebar instead.
+    var want = (top === null ? r.bottom - 56 : top - 52);
+    // Never above the sidebar's own top, never below the window.
+    var lo = Math.max(r.top + 8, 8);
+    var hi = Math.min(r.bottom, window.innerHeight) - 48;
+    if (hi < lo) hi = lo;
     link.style.left = (r.left + 14) + "px";
     link.style.width = (r.width - 28) + "px";
-    link.style.top = ((top === null ? r.bottom - 56 : top - 52)) + "px";
+    link.style.top = Math.min(Math.max(want, lo), hi) + "px";
     link.style.display = "block";
   }
 
+  function safePlace() { try { place(); } catch (e) { /* never kill the timer */ } }
+
   function start() {
-    place();
-    setInterval(place, 1000);
-    window.addEventListener("resize", place);
-    window.addEventListener("scroll", place, true);
+    setInterval(safePlace, 1000);
+    safePlace();
+    window.addEventListener("resize", safePlace);
+    window.addEventListener("scroll", safePlace, true);
   }
 
   if (document.readyState === "loading") {
