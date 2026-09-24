@@ -1884,14 +1884,15 @@ requireAuth()
 </script>
 
 <script>
-// "Back to Nexus", placed in the dashboard's own sidebar.
+// "Back to Nexus", parked over the dashboard's own sidebar.
 //
-// ?from= says which module view to return to. Without one we still go to the
-// portal, just to its overview. Anything that is not the portal itself is
-// ignored rather than followed - an unchecked ?from= is an open redirect.
+// ?from= says which module view to return to. Without one it goes to the
+// portal's overview. Anything that is not the portal itself is ignored rather
+// than followed - an unchecked ?from= is an open redirect.
 //
-// It re-inserts itself for the life of the page: these dashboards rebuild
-// their sidebar when you change page, which throws the link away.
+// It lives on document.body and is positioned to line up with the sidebar,
+// because these dashboards re-render their sidebar on navigation and would
+// throw away anything placed inside it.
 (function () {
   var NEXUS = "https://meridian-group-za.github.io/Meridian-Nexus/portal.html";
   var from = NEXUS;
@@ -1900,97 +1901,79 @@ requireAuth()
     if (asked && asked.indexOf(NEXUS) === 0) from = asked;
   } catch (e) { /* keep the default */ }
 
-  // The nav column: tall, narrow, pinned, and holding several links. Measured
-  // rather than guessed from markup, because these dashboards build their
-  // sidebars differently - aside, nav, or a plain div.
-  function findSidebar() {
-    var best = null;
+  var link = null;
+
+  function sidebar() {
     var nodes = document.querySelectorAll("aside,nav,div");
     for (var i = 0; i < nodes.length; i++) {
       var el = nodes[i];
-      var box = el.getBoundingClientRect();
-      if (box.width < 120 || box.width > 420) continue;
-      if (box.height < window.innerHeight * 0.6) continue;
-      if (box.left > window.innerWidth * 0.25) continue;
-      var pos = window.getComputedStyle(el).position;
-      if (pos !== "sticky" && pos !== "fixed" && box.height < window.innerHeight * 0.9) continue;
+      var r = el.getBoundingClientRect();
+      if (r.width < 120 || r.width > 420) continue;
+      if (r.height < window.innerHeight * 0.6) continue;
+      if (r.left > window.innerWidth * 0.25) continue;
       if (el.querySelectorAll("a,button").length < 2) continue;
-      // the innermost column that still qualifies
-      if (!best || el.contains(best) === false) best = el;
+      return el;
+    }
+    return null;
+  }
+
+  // The footer inside it - "Last updated", "Log out", "Sign out" - so we can
+  // sit just above whatever the dashboard puts at the bottom.
+  function footerTop(side) {
+    var best = null;
+    var nodes = side.querySelectorAll("div,a,button,span,p");
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (el.children.length > 2) continue;
+      var txt = (el.textContent || "").trim();
+      if (!/^(last updated|data refreshed|log ?out|sign ?out)/i.test(txt)) continue;
+      if (txt.length > 60) continue;
+      var top = el.getBoundingClientRect().top;
+      if (best === null || top < best) best = top;
     }
     return best;
   }
 
-  // Inside the sidebar: above its footer if it has one, otherwise at the end.
-  function placeIn(sidebar, link) {
-    var candidates = sidebar.querySelectorAll("div,a,button,span,p");
-    for (var i = 0; i < candidates.length; i++) {
-      var el = candidates[i];
-      if (el.children.length > 2) continue;
-      var txt = (el.textContent || "").trim();
-      if (/^(last updated|data refreshed)/i.test(txt) && txt.length < 60) {
-        if (el.parentNode) { el.parentNode.insertBefore(link, el); return true; }
-      }
+  function place() {
+    var side = sidebar();
+    if (!link) {
+      link = document.createElement("a");
+      link.id = "nx-back";
+      link.textContent = "\u2190 Back to Nexus";
+      link.title = "Back to the Meridian Nexus portal";
+      link.href = from;
+      link.style.cssText = [
+        "position:fixed", "z-index:2147483000", "box-sizing:border-box",
+        "padding:10px 14px", "border-radius:10px", "text-align:center",
+        "background:rgba(236,109,37,0.12)", "border:1px solid rgba(236,109,37,0.38)",
+        "color:#f2955c", "font:600 13px/1.2 Poppins,Segoe UI,system-ui,sans-serif",
+        "text-decoration:none", "cursor:pointer", "display:none"
+      ].join(";");
+      link.addEventListener("mouseenter", function () {
+        link.style.background = "rgba(236,109,37,0.2)";
+      });
+      link.addEventListener("mouseleave", function () {
+        link.style.background = "rgba(236,109,37,0.12)";
+      });
+      document.body.appendChild(link);
     }
-    for (var j = 0; j < candidates.length; j++) {
-      var e2 = candidates[j];
-      if (e2.children.length > 2 && !/^(log|sign) ?out$/i.test((e2.textContent || "").trim())) continue;
-      if (/^(log|sign) ?out$/i.test((e2.textContent || "").trim()) && e2.parentNode) {
-        e2.parentNode.insertBefore(link, e2);
-        return true;
-      }
-    }
-    sidebar.appendChild(link);
-    return true;
-  }
+    if (!side) { link.style.display = "none"; return; }
 
-  function add() {
-    if (document.getElementById("nx-back")) return true;
-    var sidebar = findSidebar();
-    if (!sidebar) return false;
-
-    var a = document.createElement("a");
-    a.id = "nx-back";
-    a.href = from;
-    a.textContent = "\u2190 Back to Nexus";
-    a.title = "Back to the Meridian Nexus portal";
-    a.style.cssText = [
-      "display:block", "margin:14px 14px 4px", "padding:10px 14px",
-      "border-radius:10px", "text-align:center",
-      "background:rgba(236,109,37,0.12)", "border:1px solid rgba(236,109,37,0.38)",
-      "color:#f2955c", "font:600 13px/1.2 Poppins,Segoe UI,system-ui,sans-serif",
-      "text-decoration:none", "cursor:pointer"
-    ].join(";");
-    a.addEventListener("mouseenter", function () {
-      a.style.background = "rgba(236,109,37,0.2)";
-    });
-    a.addEventListener("mouseleave", function () {
-      a.style.background = "rgba(236,109,37,0.12)";
-    });
-
-    return placeIn(sidebar, a);
-  }
-
-  var pending = false;
-  function schedule() {
-    if (pending) return;
-    pending = true;
-    setTimeout(function () { pending = false; add(); }, 80);
+    var r = side.getBoundingClientRect();
+    var top = footerTop(side);
+    // 14px inset each side, and 10px of clearance above the footer. With no
+    // footer to find, sit near the bottom of the sidebar instead.
+    link.style.left = (r.left + 14) + "px";
+    link.style.width = (r.width - 28) + "px";
+    link.style.top = ((top === null ? r.bottom - 56 : top - 52)) + "px";
+    link.style.display = "block";
   }
 
   function start() {
-    add();
-    // The sidebar may not be laid out yet on first paint, and is rebuilt on
-    // navigation - so try again for a while, then keep watching.
-    var tries = 0;
-    var timer = setInterval(function () {
-      if (add() || ++tries > 40) clearInterval(timer);
-    }, 250);
-    if (window.MutationObserver) {
-      new MutationObserver(function () {
-        if (!document.getElementById("nx-back")) schedule();
-      }).observe(document.body, { childList: true, subtree: true });
-    }
+    place();
+    setInterval(place, 1000);
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
   }
 
   if (document.readyState === "loading") {
