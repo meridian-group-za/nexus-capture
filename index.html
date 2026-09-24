@@ -1884,6 +1884,7 @@ requireAuth()
 </script>
 
 
+
 <script>
 // "Back to Nexus".
 //
@@ -1936,8 +1937,11 @@ requireAuth()
       if (r.width === 0 || r.height === 0) continue;
       var txt = (el.textContent || "").trim();
       if (txt.length > 60) continue;
-      if (/^(last updated|data refreshed|data as at|updated )/i.test(txt)) return el;
-      if (!out && /^(log|sign) ?out$/i.test(txt)) out = el;
+      // Log out / Sign out first: every one of these dashboards has one, and it
+      // is always the bottom of the nav, so it is the steadiest thing to sit
+      // above. The "last updated" line is the fallback for pages without one.
+      if (/^(log|sign) ?out$/i.test(txt)) return el;
+      if (!out && /^(last updated|data refreshed|data as at|updated )/i.test(txt)) out = el;
     }
     return out;
   }
