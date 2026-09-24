@@ -1915,6 +1915,7 @@ requireAuth()
 
 
 
+
 <script>
 // Take over the dashboard's own Log out / Sign out control and make it
 // "Back to Nexus".
@@ -1941,6 +1942,66 @@ requireAuth()
     if (!/^(log|sign) ?out$/i.test(txt)) return false;
     var r = el.getBoundingClientRect();
     return r.width > 0 && r.height > 0;   // skip hidden copies
+  }
+
+  // The nav column: tall, narrow, down the left side.
+  function sidebar() {
+    var nodes = document.querySelectorAll("aside,nav,div");
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      var r = el.getBoundingClientRect();
+      if (r.width < 120 || r.width > 420) continue;
+      if (r.height < window.innerHeight * 0.6) continue;
+      if (r.left > window.innerWidth * 0.25) continue;
+      if (el.querySelectorAll("a,button,img").length < 1) continue;
+      return el;
+    }
+    return null;
+  }
+
+  // Sales Insights keeps its Sign out in the top-right header, so the swapped
+  // control lands up there. Carin wants it with the rest of the navigation, so
+  // anything outside the nav column is moved into it, above the Meridian logo
+  // that sits at the foot of these sidebars.
+  function moveIntoSidebar(el) {
+    var side = sidebar();
+    if (!side || side.contains(el)) return;
+
+    // The LOWEST Meridian logo in the column - these sidebars have one at the
+    // top as well, and anchoring to that put the button up by the title.
+    var target = null, targetTop = -1;
+    var imgs = side.querySelectorAll("img");
+    for (var i = 0; i < imgs.length; i++) {
+      var src = (imgs[i].getAttribute("src") || "") + " " + (imgs[i].getAttribute("alt") || "");
+      if (!/meridian/i.test(src)) continue;
+      var box = imgs[i].getBoundingClientRect();
+      if (box.width === 0 || box.height === 0) continue;
+      if (box.top <= targetTop) continue;
+      // Sit immediately above the logo, in the logo's own container. Climbing
+      // all the way to a child of the sidebar overshot: the logo's outermost
+      // ancestor was the whole nav, so the button landed at the very top.
+      var t = imgs[i];
+      while (t.parentNode && t.parentNode !== side &&
+             t.parentNode.children.length === 1) {
+        t = t.parentNode;
+      }
+      if (t.parentNode) { target = t; targetTop = box.top; }
+    }
+
+    if (target) target.parentNode.insertBefore(el, target);
+    else side.appendChild(el);
+
+    el.style.setProperty("display", "block", "important");
+    el.style.setProperty("margin", "14px 14px 10px", "important");
+    el.style.setProperty("text-align", "center", "important");
+    el.style.setProperty("padding", "10px 14px", "important");
+    el.style.setProperty("border-radius", "10px", "important");
+    el.style.setProperty("border", "1px solid rgba(236,109,37,0.38)", "important");
+    el.style.setProperty("background", "rgba(236,109,37,0.12)", "important");
+    el.style.setProperty("color", "#f2955c", "important");
+    el.style.setProperty("text-decoration", "none", "important");
+    el.style.setProperty("position", "static", "important");
+    el.style.setProperty("width", "auto", "important");
   }
 
   function convert(el) {
@@ -1990,9 +2051,12 @@ requireAuth()
     if (next.tagName === "A") next.setAttribute("href", from);
 
     el.parentNode.replaceChild(next, el);
+    try { moveIntoSidebar(next); } catch (e) { /* leave it where it is */ }
   }
 
   function tick() {
+    var already = document.querySelector('[data-nx-back="1"]');
+    if (already) { try { moveIntoSidebar(already); } catch (e) {} }
     var nodes = document.querySelectorAll("a,button,div,span,p,li");
     for (var i = 0; i < nodes.length; i++) {
       if (isLogout(nodes[i])) {
