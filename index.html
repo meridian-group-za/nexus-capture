@@ -1935,6 +1935,7 @@ requireAuth()
 
 
 
+
 <script>
 // Take over the dashboard's own Log out / Sign out control and make it
 // "Back to Nexus".
@@ -2026,6 +2027,45 @@ requireAuth()
     el.style.setProperty("width", "auto", "important");
   }
 
+  // One look everywhere. Taking over the page's own control means inheriting
+  // its styling, which on Capture was a grey Sign out button - so the styling
+  // is applied rather than inherited, with priority so the host CSS cannot
+  // pull it back.
+  function pill(el) {
+    var css = {
+      "display": "block", "box-sizing": "border-box", "width": "auto",
+      "margin": "12px 14px 10px", "padding": "9px 14px",
+      "border-radius": "999px", "text-align": "center",
+      "background": "rgba(236,109,37,0.12)",
+      "border": "1px solid rgba(236,109,37,0.45)",
+      "color": "#f2955c", "text-decoration": "none", "cursor": "pointer",
+      "font": "600 12.5px/1.2 Poppins,Segoe UI,system-ui,sans-serif",
+      "letter-spacing": ".01em", "opacity": "1", "transform": "none"
+    };
+    for (var k in css) {
+      if (Object.prototype.hasOwnProperty.call(css, k)) {
+        el.style.setProperty(k, css[k], "important");
+      }
+    }
+  }
+
+  // The signed-in person's name sits just above this control on some of these
+  // dashboards. Carin asked for it gone. Only the element immediately before
+  // the button is considered, and only when it looks like a name: a couple of
+  // words, letters only, no digits and no label wording.
+  function hideNameAbove(el) {
+    var prev = el.previousElementSibling;
+    if (!prev || prev.getAttribute("data-nx-hidden") === "1") return;
+    if (prev.querySelector("a,button,img,svg")) return;
+    var txt = (prev.textContent || "").trim();
+    if (!txt || txt.length > 40) return;
+    if (/[0-9]/.test(txt)) return;
+    if (/last updated|data refreshed|data as at|updated|sign|log/i.test(txt)) return;
+    if (!/^[A-Za-z][A-Za-z.'\-]*(\s+[A-Za-z][A-Za-z.'\-]*){0,2}$/.test(txt)) return;
+    prev.setAttribute("data-nx-hidden", "1");
+    prev.style.setProperty("display", "none", "important");
+  }
+
   function convert(el) {
     // A clone carries the markup and styling but none of the listeners added
     // with addEventListener. That is NOT enough on its own: an inline onclick
@@ -2073,12 +2113,16 @@ requireAuth()
     if (next.tagName === "A") next.setAttribute("href", from);
 
     el.parentNode.replaceChild(next, el);
+    try { pill(next); hideNameAbove(next); } catch (e) {}
     try { moveIntoSidebar(next); } catch (e) { /* leave it where it is */ }
   }
 
   function tick() {
     var already = document.querySelector('[data-nx-back="1"]');
-    if (already) { try { moveIntoSidebar(already); } catch (e) {} }
+    if (already) {
+      try { pill(already); hideNameAbove(already); } catch (e) {}
+      try { moveIntoSidebar(already); } catch (e) {}
+    }
     var nodes = document.querySelectorAll("a,button,div,span,p,li");
     for (var i = 0; i < nodes.length; i++) {
       if (isLogout(nodes[i])) {
