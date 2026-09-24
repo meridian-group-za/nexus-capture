@@ -1882,5 +1882,42 @@ requireAuth()
   .then(d => { DATA = d; render(); })
   .catch(e => { document.getElementById('app').innerHTML = `<div id="page-loading">Could not load compliance_data.json &mdash; ${esc(e.message)}</div>`; });
 </script>
+
+<script>
+// "Back to Nexus", shown only when the portal sent you here and said where to
+// return to. The destination is checked against the portal's own URL: taking
+// an arbitrary ?from= on trust is an open redirect waiting to happen.
+(function () {
+  var NEXUS = "https://meridian-group-za.github.io/Meridian-Nexus/portal.html";
+  var from;
+  try { from = new URLSearchParams(window.location.search).get("from"); } catch (e) { return; }
+  if (!from || from.indexOf(NEXUS) !== 0) return;
+
+  function add() {
+    if (document.getElementById("nx-back")) return;
+    var a = document.createElement("a");
+    a.id = "nx-back";
+    a.href = from;
+    a.textContent = "\\u2190 Nexus";
+    a.title = "Back to the Meridian Nexus portal";
+    a.style.cssText = [
+      "position:fixed", "top:14px", "left:14px", "z-index:99999",
+      "display:inline-flex", "align-items:center", "gap:6px",
+      "padding:7px 13px", "border-radius:9px",
+      "background:rgba(236,109,37,0.16)", "border:1px solid rgba(236,109,37,0.45)",
+      "color:#f2955c", "font:600 12px/1 Poppins,Segoe UI,system-ui,sans-serif",
+      "text-decoration:none", "cursor:pointer",
+      "backdrop-filter:blur(6px)", "-webkit-backdrop-filter:blur(6px)"
+    ].join(";");
+    document.body.appendChild(a);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", add);
+  } else {
+    add();
+  }
+})();
+</script>
 </body>
 </html>
