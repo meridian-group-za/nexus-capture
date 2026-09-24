@@ -1884,19 +1884,16 @@ requireAuth()
 </script>
 
 <script>
-// "Back to Nexus", shown only when the portal sent you here and said where to
-// return to. The destination is checked against the portal's own URL: taking
-// an arbitrary ?from= on trust is an open redirect waiting to happen.
+// "Back to Nexus" in the sidebar, above the footer.
 //
-// Placed inside the sidebar, above the footer, rather than floated in a
-// corner - these dashboards have a full-height sticky sidebar, so every corner
-// already belongs to something (logo, Log out, sticky header).
+// ?from= says which module view to return to. Without one we still go to the
+// portal, just to its overview. Anything that is not the portal itself is
+// ignored rather than followed - an unchecked ?from= is an open redirect.
+//
+// It re-inserts itself for the life of the page: these dashboards rebuild
+// their sidebar when you change page, which throws the link away.
 (function () {
   var NEXUS = "https://meridian-group-za.github.io/Meridian-Nexus/portal.html";
-  // Always offer the way back. ?from= says which module view to return to;
-  // without it we still go to the portal, just to its overview. Anything that
-  // is not the portal itself is ignored rather than followed - an unchecked
-  // ?from= is an open redirect.
   var from = NEXUS;
   try {
     var asked = new URLSearchParams(window.location.search).get("from");
@@ -1904,24 +1901,24 @@ requireAuth()
   } catch (e) { /* keep the default */ }
 
   function footerAnchor() {
-    // The footer block: "Last updated" if the dashboard has one, otherwise the
-    // Log out control. Either way we insert immediately above it.
+    // "Last updated" if the dashboard has one, otherwise whatever it calls the
+    // way out - Capture says "Sign out", the others "Log out".
     var all = document.querySelectorAll("div,a,button,span,p");
-    var logout = null;
+    var out = null;
     for (var i = 0; i < all.length; i++) {
       var el = all[i];
       if (el.children.length > 2) continue;
       var txt = (el.textContent || "").trim();
       if (/^last updated/i.test(txt) && txt.length < 60) return el;
-      if (!logout && /^log ?out$/i.test(txt)) logout = el;
+      if (!out && /^(log|sign) ?out$/i.test(txt)) out = el;
     }
-    return logout;
+    return out;
   }
 
   function add() {
-    if (document.getElementById("nx-back")) return;
+    if (document.getElementById("nx-back")) return true;
     var anchor = footerAnchor();
-    if (!anchor || !anchor.parentNode) return;
+    if (!anchor || !anchor.parentNode) return false;
 
     var a = document.createElement("a");
     a.id = "nx-back";
@@ -1942,30 +1939,44 @@ requireAuth()
       a.style.background = "rgba(236,109,37,0.12)";
     });
 
-    // Above the footer block, which is where the gap under the nav sits.
+    // Climb out of any single-child wrappers so the link lands beside the
+    // footer rather than inside it - but never past the top, or we would be
+    // reaching for a parent that is not there.
     var target = anchor;
-    while (target.parentNode && target.parentNode.children.length === 1) {
+    while (target.parentNode && target.parentNode.parentNode &&
+           target.parentNode.children.length === 1) {
       target = target.parentNode;
     }
+    if (!target.parentNode) return false;
     target.parentNode.insertBefore(a, target);
+    return true;
   }
 
-  // These dashboards render their sidebar from JS, so the footer may not exist
-  // yet on DOMContentLoaded. Watch briefly, then stop - no permanent observer.
-  function watch() {
+  // Watch for the life of the page, not just until the first success: the
+  // sidebar is rebuilt on navigation and takes the link with it. Debounced so
+  // that our own insert does not re-trigger the observer in a loop.
+  var pending = false;
+  function schedule() {
+    if (pending) return;
+    pending = true;
+    setTimeout(function () { pending = false; add(); }, 60);
+  }
+
+  function start() {
     add();
-    if (document.getElementById("nx-back")) return;
-    var tries = 0;
-    var timer = setInterval(function () {
-      add();
-      if (document.getElementById("nx-back") || ++tries > 40) clearInterval(timer);
-    }, 250);
+    if (window.MutationObserver) {
+      new MutationObserver(function () {
+        if (!document.getElementById("nx-back")) schedule();
+      }).observe(document.body, { childList: true, subtree: true });
+    } else {
+      setInterval(function () { add(); }, 1000);
+    }
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", watch);
+    document.addEventListener("DOMContentLoaded", start);
   } else {
-    watch();
+    start();
   }
 })();
 </script>
