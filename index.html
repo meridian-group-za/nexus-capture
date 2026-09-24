@@ -1886,6 +1886,7 @@ requireAuth()
 
 
 
+
 <script>
 // Take over the dashboard's own Log out / Sign out control and make it
 // "Back to Nexus".
@@ -1915,35 +1916,50 @@ requireAuth()
   }
 
   function convert(el) {
-    // A clone carries the markup and styling but none of the original's
-    // listeners, so the swapped control cannot still sign anyone out.
+    // A clone carries the markup and styling but none of the listeners added
+    // with addEventListener. That is NOT enough on its own: an inline onclick
+    // attribute is copied with the clone, and a handler delegated from
+    // document still matches the clone by its id or class. Both of those
+    // signed people out when the button was pressed, so strip them too.
     var next = el.cloneNode(true);
     next.setAttribute("data-nx-back", "1");
+
+    var all = [next].concat([].slice.call(next.querySelectorAll("*")));
+    for (var n = 0; n < all.length; n++) {
+      var node = all[n];
+      var attrs = [].slice.call(node.attributes || []);
+      for (var k = 0; k < attrs.length; k++) {
+        // inline handlers: onclick, onmousedown, onkeydown...
+        if (/^on/i.test(attrs[k].name)) node.removeAttribute(attrs[k].name);
+      }
+      // ids and classes a delegated handler would match on
+      if (node.id && /log\s*-?out|sign\s*-?out/i.test(node.id)) node.removeAttribute("id");
+      if (node.className && typeof node.className === "string") {
+        var kept = node.className.split(/\s+/).filter(function (c) {
+          return c && !/log-?out|sign-?out/i.test(c);
+        });
+        node.className = kept.join(" ");
+      }
+      node.removeAttribute("href");
+      node.removeAttribute("data-action");
+    }
 
     // Replace the label wherever it lives - some of these wrap the words in a
     // span next to an icon, so only the text nodes are rewritten and the icon
     // is left alone.
     var done = false;
     var walker = document.createTreeWalker(next, NodeFilter.SHOW_TEXT, null);
-    var node;
-    while ((node = walker.nextNode())) {
-      if (/\S/.test(node.nodeValue)) {
-        node.nodeValue = done ? "" : "Back to Nexus";
+    var node2;
+    while ((node2 = walker.nextNode())) {
+      if (/\S/.test(node2.nodeValue)) {
+        node2.nodeValue = done ? "" : "Back to Nexus";
         done = true;
       }
     }
     if (!done) next.textContent = "Back to Nexus";
 
     next.setAttribute("title", "Back to the Meridian Nexus portal");
-    if (next.tagName === "A") {
-      next.setAttribute("href", from);
-      next.removeAttribute("target");
-    }
-    next.addEventListener("click", function (ev) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      window.location.href = from;
-    });
+    if (next.tagName === "A") next.setAttribute("href", from);
 
     el.parentNode.replaceChild(next, el);
   }
@@ -1960,6 +1976,17 @@ requireAuth()
   function safeTick() { try { tick(); } catch (e) { /* never kill the timer */ } }
 
   function start() {
+    // Capture phase, on document: this sees the click before any handler the
+    // page delegated from document, so a leftover sign-out handler can never
+    // run. This is what stops pressing the button signing the person out.
+    document.addEventListener("click", function (ev) {
+      var t = ev.target && ev.target.closest && ev.target.closest('[data-nx-back="1"]');
+      if (!t) return;
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      window.location.href = from;
+    }, true);
+
     // Re-checked for the life of the page: a re-render puts the original back.
     setInterval(safeTick, 1000);
     safeTick();
