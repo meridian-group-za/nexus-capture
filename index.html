@@ -1893,9 +1893,15 @@ requireAuth()
 // already belongs to something (logo, Log out, sticky header).
 (function () {
   var NEXUS = "https://meridian-group-za.github.io/Meridian-Nexus/portal.html";
-  var from;
-  try { from = new URLSearchParams(window.location.search).get("from"); } catch (e) { return; }
-  if (!from || from.indexOf(NEXUS) !== 0) return;
+  // Always offer the way back. ?from= says which module view to return to;
+  // without it we still go to the portal, just to its overview. Anything that
+  // is not the portal itself is ignored rather than followed - an unchecked
+  // ?from= is an open redirect.
+  var from = NEXUS;
+  try {
+    var asked = new URLSearchParams(window.location.search).get("from");
+    if (asked && asked.indexOf(NEXUS) === 0) from = asked;
+  } catch (e) { /* keep the default */ }
 
   function footerAnchor() {
     // The footer block: "Last updated" if the dashboard has one, otherwise the
