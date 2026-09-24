@@ -1,6 +1,34 @@
 <!doctype html>
 <html>
 <head>
+<script>
+// MSAL leaves "interaction.status = in_progress" in sessionStorage when a
+// sign-in redirect is interrupted - back button, closed tab, dropped network,
+// two sign-ins at once. Nothing clears it, so every later call in that tab
+// throws interaction_in_progress and the dashboard sticks on the sign-in
+// screen until the tab is closed.
+//
+// A genuine in-flight interaction leaves the page and returns with its
+// response in the URL. So on a load with no auth response present, any flag
+// left behind is stale and safe to drop. Runs in <head>, before MSAL, so the
+// flag is gone before anything reads it.
+(function () {
+  try {
+    var here = window.location.hash + window.location.search;
+    // An actual redirect coming back carries one of these.
+    if (/[#&?](code|error|id_token|access_token|state)=/.test(here)) return;
+
+    var stale = [];
+    for (var i = 0; i < sessionStorage.length; i++) {
+      var k = sessionStorage.key(i);
+      if (k && k.indexOf("interaction.status") !== -1) stale.push(k);
+    }
+    for (var j = 0; j < stale.length; j++) sessionStorage.removeItem(stale[j]);
+  } catch (e) {
+    /* private mode or blocked storage - nothing to clear */
+  }
+})();
+</script>
 <meta charset="utf-8">
 <title>Capture Compliance</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
