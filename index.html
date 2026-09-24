@@ -1901,14 +1901,18 @@ requireAuth()
     a.textContent = "\\u2190 Nexus";
     a.title = "Back to the Meridian Nexus portal";
     a.style.cssText = [
-      "position:fixed", "top:14px", "left:14px", "z-index:99999",
-      "display:inline-flex", "align-items:center", "gap:6px",
-      "padding:7px 13px", "border-radius:9px",
-      "background:rgba(236,109,37,0.16)", "border:1px solid rgba(236,109,37,0.45)",
-      "color:#f2955c", "font:600 12px/1 Poppins,Segoe UI,system-ui,sans-serif",
-      "text-decoration:none", "cursor:pointer",
+      "position:fixed", "bottom:16px", "left:16px", "z-index:99999",
+      "display:inline-flex", "align-items:center", "gap:5px",
+      "padding:6px 11px", "border-radius:8px",
+      "background:rgba(10,24,46,0.82)", "border:1px solid rgba(236,109,37,0.35)",
+      "color:#f2955c", "font:600 11px/1 Poppins,Segoe UI,system-ui,sans-serif",
+      "text-decoration:none", "cursor:pointer", "opacity:0.72",
+      "box-shadow:0 2px 10px rgba(0,0,0,0.35)",
+      "transition:opacity .15s ease",
       "backdrop-filter:blur(6px)", "-webkit-backdrop-filter:blur(6px)"
     ].join(";");
+    a.addEventListener("mouseenter", function () { a.style.opacity = "1"; });
+    a.addEventListener("mouseleave", function () { a.style.opacity = "0.72"; });
     document.body.appendChild(a);
   }
 
